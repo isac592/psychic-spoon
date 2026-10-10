@@ -2,90 +2,90 @@
 >>>>>>>>>>>> STEP: import <<<<<<<<<<<<
 python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
 
->>>>>>>>>>>> STEP: B0 修 diffusers 的 transforms bug <<<<<<<<<<<<
-  已注入 transforms shim
+>>>>>>>>>>>> STEP: A0 装 ai-edge-quantizer <<<<<<<<<<<<
+  ai_edge_quantizer 已存在
+  可用 recipe: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'algorithm_manager', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'qtyping', 'recipe_manager', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
 
->>>>>>>>>>>> STEP: B1 读配置 + 只建 1 层（省内存：28 层 fp32 是 7.8 GB） <<<<<<<<<<<<
-  原始 num_layers = 28
-    num_attention_heads    = 16
-    attention_head_dim     = 128
-    in_channels            = 16
-    out_channels           = 16
-    patch_size             = [1, 2, 2]
-    text_embed_dim         = 1024
-    mlp_ratio              = 4.0
-    adaln_lora_dim         = 256
-    concat_padding_mask    = True
-    max_size               = [128, 240, 240]
-    rope_scale             = [1.0, 4.0, 4.0]
-  1 层模型建好, params=87828992
+>>>>>>>>>>>> STEP: A1 修 transforms bug + 读配置 <<<<<<<<<<<<
 
->>>>>>>>>>>> STEP: B2 惰性读 block[0] 权重（safe_open，不把 1.96B 全读进来） <<<<<<<<<<<<
-  下载 17s, safetensors 分片 1 个
-  取到 block[0] 张量 20 个
-  load_state_dict: missing=7 unexpected=0
-  ★ block[0] CosmosTransformerBlock  params=69206528 (264.0 MB fp32)
+>>>>>>>>>>>> STEP: A2 惰性读 block[0] 权重 <<<<<<<<<<<<
+  下载 37s, 取到 20 个张量
+  hidden=2048  text=1024  params=69206528
 
->>>>>>>>>>>> STEP: B3 看 block 的模块结构和真实通道数 <<<<<<<<<<<<
-  attn1.to_q.in_features (hidden) = 2048
-  attn2.to_k.in_features (text)   = 1024
-    norm1            CosmosAdaLayerNormZero       2097152
-    attn1            Attention                    16777472
-    norm2            CosmosAdaLayerNormZero       2097152
-    attn2            Attention                    12583168
-    norm3            CosmosAdaLayerNormZero       2097152
-    ff               FeedForward                  33554432
+>>>>>>>>>>>> STEP: A3 造输入 + rope <<<<<<<<<<<<
+  rope cos(4096, 128) sin(4096, 128)
 
->>>>>>>>>>>> STEP: B4 造真实形状输入 + 算 rope（1024x1024） <<<<<<<<<<<<
-  输入形状: hidden(1, 4096, 2048)  enc(1, 256, 1024)  embedded_timestep(1, 2048)  temb(1, 6144)
-  rope() -> cos(4096, 128) sin(4096, 128)
-  ★ rope 是常量（只跟形状有关），可以直接烘进模型
+>>>>>>>>>>>> STEP: A4 包装 + 导出 fp32 <<<<<<<<<<<<
+  ★★ fp32 导出 268.1 MB  7s
 
->>>>>>>>>>>> STEP: B5 试跑一次，搞清楚返回结构 <<<<<<<<<<<<
-  ★ 返回结构 = tensor (1, 4096, 2048)
-  已存 dit_block_ref.npz（手机端对答案用）
+>>>>>>>>>>>> STEP: A5 读输入张量名字（校准要用） <<<<<<<<<<<<
+    serving_default_args_0 [1, 4096, 2048]
+    serving_default_args_1 [1, 256, 1024]
+    serving_default_args_2 [1, 2048]
+    serving_default_args_3 [1, 6144]
 
->>>>>>>>>>>> STEP: B6 包一层，把 rope 当常量 buffer 烘进去 <<<<<<<<<<<<
-  包装完成
+>>>>>>>>>>>> STEP: A6 int8 量化 <<<<<<<<<<<<
+  可用校准模式: ['CALIBRATION_PRESERVE_ALL_TENSORS', 'CALIBRATION_PROFILER_BASED', 'INFERENCE']
 
->>>>>>>>>>>> STEP: B7 导出 TFLite (fp32) <<<<<<<<<<<<
-  尝试 litert_torch
-  ★★ 导出成功 268.1 MB  7s
+  ---- 试 recipe: static_wi8_ai8 ----
+    need_calibration = True
+    校准样本 16 份
+    profiler 模式失败(Invalid Input name (serving_default_args_0) for SignatureDef)，改用默认模式
+    static_wi8_ai8 FAIL: KeyError 'args_0'
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 257, in main
+    res = qt.calibrate(cal_data, mode=aeq_cal.CalibrationMode.CALIBRATION_PROFILER_BASED)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/quantizer.py", line 412, in calibrate
+    calib.calibrate(calibration_data, self._recipe_manager)
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 328, in calibrate
+    self._calibrate_step(
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 649, in _calibrate_step
+    raise ValueError(f"Invalid Input name ({input_name}) for SignatureDef")
+ValueError: Invalid Input name (serving_default_args_0) for SignatureDef
 
->>>>>>>>>>>> STEP: B8 审计 <<<<<<<<<<<<
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 260, in main
+    res = qt.calibrate(cal_data)
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/quantizer.py", line 412, in calibrate
+    calib.calibrate(calibration_data, self._recipe_manager)
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 328, in calibrate
+    self._calibrate_step(
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 518, in _calibrate_step
+    signature_output = tfl_interpreter_utils.invoke_interpreter_signature(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/utils/tfl_interpreter_utils.py", line 111, in invoke_interpreter_signature
+    input_data = signature_input[input_name]
+                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^
+KeyError: 'args_0'
+
+
+  ---- 试 recipe: dynamic_wi8_afp32 ----
+    need_calibration = False
+    ★★ dynamic_wi8_afp32 成功 70.6 MB  0s  压缩比 3.80x
+
+>>>>>>>>>>>> STEP: A7 审计产物 <<<<<<<<<<<<
   --- 审计 dit_block0_1024_fp32.tflite (268.08 MB) ---
-  subgraph0 tensors=235 秩直方图={3: 69, 2: 41, 1: 46, 0: 7, 4: 66, 5: 6}
-    张量类型: {'FLOAT32': 207, 'INT32': 28}
-    IN [0] [1,4096,2048]FLOAT32
-    IN [1] [1,256,1024]FLOAT32
-    IN [2] [1,2048]FLOAT32
-    IN [3] [1,6144]FLOAT32
-    OUT[0] [1,4096,2048]FLOAT32
-    5D+ 张量个数 = 6
-       [1, 16, 4096, 2, 64]
-       [1, 16, 4096, 1, 64]
-       [1, 16, 4096, 1, 64]
-       [1, 16, 4096, 2, 64]
-       [1, 16, 4096, 1, 64]
-       [1, 16, 4096, 1, 64]
-  --- 算子表 ---
-    MUL                        x 39
-    RESHAPE                    x 39
-    TANH                       x 24
-    FULLY_CONNECTED            x 16
-    SELECT                     x 13
-    TRANSPOSE                  x 10
-    SQRT                       x 7
-    MEAN                       x 6
-    LOG                        x 4
-    SEGMENT_SUM                x 4
-    LEAKY_RELU                 x 3
-    SUB                        x 3
-    CONCATENATION              x 2
-    SOFTMAX                    x 2
-    LOGISTIC                   x 1
-    RANDOM_UNIFORM             x 1
-  >>> 最大秩=5  全<=4D:False  图IO全<=4D:True
+  张量秩直方图 = {3: 69, 2: 41, 1: 46, 0: 7, 4: 66, 5: 6}
+  张量类型     = {'FLOAT32': 207, 'INT32': 28}
+  5D+ 张量个数 = 6
+    IN  serving_default_args_0 [1, 4096, 2048]
+    IN  serving_default_args_1 [1, 256, 1024]
+    IN  serving_default_args_2 [1, 2048]
+    IN  serving_default_args_3 [1, 6144]
+    OUT serving_default_output_0_output [1, 4096, 2048]
+  --- 审计 dit_block0_1024_dynamic_wi8_afp32.tflite (70.60 MB) ---
+  张量秩直方图 = {3: 69, 2: 41, 1: 46, 0: 7, 4: 66, 5: 6}
+  张量类型     = {'FLOAT32': 191, 'INT8': 16, 'INT32': 28}
+  5D+ 张量个数 = 6
+    IN  serving_default_args_0 [1, 4096, 2048]
+    IN  serving_default_args_1 [1, 256, 1024]
+    IN  serving_default_args_2 [1, 2048]
+    IN  serving_default_args_3 [1, 6144]
+    OUT serving_default_output_0_output [1, 4096, 2048]
 
 >>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
   --- out/ ---
@@ -94,7 +94,7 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
        7868612  block_ref.npz
             57  diag.txt
       72386208  dit_block_ref.npz
-          3640  export_log.txt
+          5226  export_log.txt
              0  fault.txt
              6  step.txt
         786560  vae_out.npy
@@ -103,18 +103,10 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
          65664  vae_z4.npy
          65664  vae_z5.npy
   --- model/ ---
+      74028960  dit_block0_1024_dynamic_wi8_afp32.tflite
      281097864  dit_block0_1024_fp32.tflite
 
-================ P1 结果汇总 ================
-  block 参数量    : 69206528 (264.0 MB fp32)
-  单片 FLOPs      : attn1 274.9 + attn2 214.7 + ff 274.9 = 764.5 GFLOPs
-  28 层一次前向   : 21.41 TFLOPs   （4 步无CFG=85.6 TFLOPs）
-  返回结构        : tensor (1, 4096, 2048)
-  TFLite 导出     : PASS
-  全图 <= 4D      : FAIL
-============================================
-git push rc=0 pz is 69.03 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
-remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
-To https://github.com/isac592/psychic-spoon
-   417fa05..b0a4b5c  main -> main
-
+================ int8 结果汇总 ================
+  fp32 导出        : PASS
+  dynamic_wi8_afp32  : PASS
+==============================================
