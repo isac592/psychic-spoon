@@ -1,92 +1,71 @@
 
 >>>>>>>>>>>> STEP: import <<<<<<<<<<<<
-python 3.11.17
-torch 2.13.0+cu130 | diffusers 0.41.0
+python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
 
->>>>>>>>>>>> STEP: A1 加载 VAE <<<<<<<<<<<<
-  decoder=73295331 params (279.6 MB fp32)
-  decoder Conv3d=33  Conv2d=5
+>>>>>>>>>>>> STEP: B0 修 diffusers 的 transforms bug <<<<<<<<<<<<
+  已注入 transforms shim
 
->>>>>>>>>>>> STEP: A2 原始 5D 路径参考输出（务必在打补丁之前算） <<<<<<<<<<<<
-  vae.decode((1, 16, 1, 32, 32)) -> (1, 3, 1, 256, 256)  mean=-0.308257 std=0.363568
-  已保存 vae_z5.npy / vae_z4.npy / vae_out_ref.npy
+>>>>>>>>>>>> STEP: B1 读配置 + 只建 1 层（省内存：28 层 fp32 是 7.8 GB） <<<<<<<<<<<<
+  原始 num_layers = 28
+    num_attention_heads    = 16
+    attention_head_dim     = 128
+    in_channels            = 16
+    out_channels           = 16
+    patch_size             = [1, 2, 2]
+    text_embed_dim         = 1024
+    mlp_ratio              = 4.0
+    adaln_lora_dim         = 256
+    concat_padding_mask    = True
+    max_size               = [128, 240, 240]
+    rope_scale             = [1.0, 4.0, 4.0]
+  1 层模型建好, params=87828992
 
->>>>>>>>>>>> STEP: A3 打 4D 补丁（4 个模块假设了 5D） <<<<<<<<<<<<
-  已打 4 个补丁: CausalConv3d / Resample / AttentionBlock / RMS_norm
-  已挂 15 个形状不变式钩子（batch/空间必须不变；resnet 可换通道，attention 不可）
+>>>>>>>>>>>> STEP: B2 惰性读 block[0] 权重（safe_open，不把 1.96B 全读进来） <<<<<<<<<<<<
+  下载 46s, safetensors 分片 1 个
+  取到 block[0] 张量 20 个
+  load_state_dict: missing=7 unexpected=0
+  ★ block[0] CosmosTransformerBlock  params=69206528 (264.0 MB fp32)
 
->>>>>>>>>>>> STEP: A4 数值比对 5D 原版 vs 4D 新版 <<<<<<<<<<<<
-    [decoder] in  (1, 16, 32, 32)
-    [mid_block] (1, 384, 32, 32) -> (1, 384, 32, 32)
-    [up_block 0] (1, 384, 32, 32) -> (1, 192, 64, 64)
-    [up_block 1] (1, 192, 64, 64) -> (1, 192, 128, 128)
-    [up_block 2] (1, 192, 128, 128) -> (1, 96, 256, 256)
-    [up_block 3] (1, 96, 256, 256) -> (1, 96, 256, 256)
-    [decoder] out (1, 3, 256, 256)
-  4D 版输出 -> (1, 3, 256, 256)  mean=-0.308257 std=0.363568
-  已摘掉 20 个调试钩子（导出前必须摘，避免干扰 torch.export）
-  ★ 最大绝对误差 = 1.132e-06
-  ★ 平均绝对误差 = 7.859e-08
-  ★ allclose(atol=1e-4) = True
+>>>>>>>>>>>> STEP: B3 看 block 的模块结构和真实通道数 <<<<<<<<<<<<
+  attn1.to_q.in_features (hidden) = 2048
+  attn2.to_k.in_features (text)   = 1024
+    norm1            CosmosAdaLayerNormZero       2097152
+    attn1            Attention                    16777472
+    norm2            CosmosAdaLayerNormZero       2097152
+    attn2            Attention                    12583168
+    norm3            CosmosAdaLayerNormZero       2097152
+    ff               FeedForward                  33554432
 
->>>>>>>>>>>> STEP: A5 导出 TFLite <<<<<<<<<<<<
-  尝试 litert_torch
-    [decoder] in  (1, 16, 32, 32)
-    [decoder] out (1, 3, 256, 256)
-  ★★ 导出成功 96.8 MB  19s
+>>>>>>>>>>>> STEP: B4 造真实形状输入 + 算 rope（1024x1024） <<<<<<<<<<<<
+  rope() -> cos(4096, 128) sin(4096, 128)
+  ★ rope 是常量（只跟形状有关），可以直接烘进模型
 
->>>>>>>>>>>> STEP: A6 审计 flatbuffer —— 关键：5D 必须清零 <<<<<<<<<<<<
-  --- flatbuffer 审计: vae_decoder_4d.tflite  (96.80 MB) ---
-  subgraph0  tensors=597  秩直方图={4: 412, 1: 66, 2: 13, 0: 5, 3: 101}
-    IN [0] [1,16,32,32]FLOAT32
-    OUT[0] [1,3,256,256]FLOAT32
-    5D+ 张量个数 = 0
-  --- 算子表（按次数） ---
-    MUL                        x 121
-    TRANSPOSE                  x 67
-    CONV_2D                    x 37
-    MIRROR_PAD                 x 30
-    LOG                        x 30
-    SUM                        x 30
-    MAXIMUM                    x 30
-    DIV                        x 30
-    LOGISTIC                   x 29
-    RESHAPE                    x 18
-    TANH                       x 15
-    CALL_ONCE                  x 6
-    SELECT                     x 3
-    CONCATENATION              x 3
-    ADD_N                      x 3
-    FULLY_CONNECTED            x 1
-    SOFTMAX                    x 1
-    SEGMENT_SUM                x 1
-  >>> 最大秩 = 4
-  >>> 张量全 <= 4D : True
-  >>> 图 I/O 全 <= 4D : True
+>>>>>>>>>>>> STEP: B5 试跑一次，搞清楚返回结构 <<<<<<<<<<<<
 
->>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
-  --- out/ ---
-      57352508  block.tflite
-           437  block_ops.txt
-       7868612  block_ref.npz
-            57  diag.txt
-          2796  export_log.txt
-             0  fault.txt
-             6  step.txt
-        786560  vae_out.npy
-        786560  vae_out_ref.npy
-         65664  vae_z.npy
-         65664  vae_z4.npy
-         65664  vae_z5.npy
-  --- model/ ---
-     101504276  vae_decoder_4d.tflite
-
-================ 结果汇总 ================
-  数值等价(5D vs 4D) : PASS
-  TFLite 导出        : PASS
-  全图 <= 4D         : PASS
-  结论               : 可以拿去手机上试 NPU 了
-==========================================
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   371727e..a3defdf  main -> main
+!!!!!! 顶层异常: RuntimeError The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 316, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 245, in main
+    y = blk(hidden, enc, ets, temb=temb, image_rotary_emb=(cos, sin) if cos is not None else None)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 428, in forward
+    norm_hidden_states, gate = self.norm1(hidden_states, embedded_timestep, temb)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 139, in forward
+    embedded_timestep = embedded_timestep + temb
+                        ~~~~~~~~~~~~~~~~~~^~~~~~
+RuntimeError: The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
 
