@@ -87,3 +87,6 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   全图 <= 4D         : PASS
   结论               : 可以拿去手机上试 NPU 了
 ==========================================
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   371727e..a3defdf  main -> main
+
