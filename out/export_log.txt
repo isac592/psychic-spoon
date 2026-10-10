@@ -5,15 +5,20 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> R1 建 1 层模型 + 读全部权重（含 patch_embed / time_embed / rope） <<<<<<<<<<<<
   取到 24 个张量（block0 + patch_embed + time_embed）
   load_state_dict: missing=3 unexpected=0
+    missing: norm_out.linear_1.weight
+    missing: norm_out.linear_2.weight
+    missing: proj_out.weight
+  已载入的关键前缀: ['patch_embed', 'time_embed', 'transformer_blocks']
 
 >>>>>>>>>>>> R2 造【真实分布】的输入 <<<<<<<<<<<<
+  latent (1, 16, 1, 128, 128)  ->  5D 输入 (1, 17, 1, 128, 128)
 
-!!!!!! 顶层异常: RuntimeError Tensors must have same number of dimensions: got 5 and 4
+!!!!!! 顶层异常: TypeError not all arguments converted during string formatting
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 285, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 291, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 96, in main
-    hs5 = torch.cat([latent, pm], dim=1) if cfg.get("concat_padding_mask") else latent
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: Tensors must have same number of dimensions: got 5 and 4
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 106, in main
+    log("  patch_embed -> %s"%((tuple(pe.shape)) if hasattr(pe,'shape') else type(pe)))
+        ~~~~~~~~~~~~~~~~~~~~~^^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TypeError: not all arguments converted during string formatting
 
