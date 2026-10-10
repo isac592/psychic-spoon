@@ -9,14 +9,14 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> STEP: A1 修 transforms bug + 读配置 <<<<<<<<<<<<
 
 >>>>>>>>>>>> STEP: A2 惰性读 block[0] 权重 <<<<<<<<<<<<
-  下载 37s, 取到 20 个张量
+  下载 27s, 取到 20 个张量
   hidden=2048  text=1024  params=69206528
 
 >>>>>>>>>>>> STEP: A3 造输入 + rope <<<<<<<<<<<<
   rope cos(4096, 128) sin(4096, 128)
 
 >>>>>>>>>>>> STEP: A4 包装 + 导出 fp32 <<<<<<<<<<<<
-  ★★ fp32 导出 268.1 MB  7s
+  ★★ fp32 导出 268.1 MB  5s
 
 >>>>>>>>>>>> STEP: A5 读输入张量名字（校准要用） <<<<<<<<<<<<
     serving_default_args_0 [1, 4096, 2048]
@@ -26,42 +26,13 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> STEP: A6 int8 量化 <<<<<<<<<<<<
   可用校准模式: ['CALIBRATION_PRESERVE_ALL_TENSORS', 'CALIBRATION_PROFILER_BASED', 'INFERENCE']
+  校准 key 映射: [('serving_default_args_0', 'args_0'), ('serving_default_args_1', 'args_1'), ('serving_default_args_2', 'args_2'), ('serving_default_args_3', 'args_3')]
 
   ---- 试 recipe: static_wi8_ai8 ----
     need_calibration = True
-    校准样本 16 份
-    profiler 模式失败(Invalid Input name (serving_default_args_0) for SignatureDef)，改用默认模式
-    static_wi8_ai8 FAIL: KeyError 'args_0'
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 257, in main
-    res = qt.calibrate(cal_data, mode=aeq_cal.CalibrationMode.CALIBRATION_PROFILER_BASED)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/quantizer.py", line 412, in calibrate
-    calib.calibrate(calibration_data, self._recipe_manager)
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 328, in calibrate
-    self._calibrate_step(
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 649, in _calibrate_step
-    raise ValueError(f"Invalid Input name ({input_name}) for SignatureDef")
-ValueError: Invalid Input name (serving_default_args_0) for SignatureDef
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 260, in main
-    res = qt.calibrate(cal_data)
-          ^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/quantizer.py", line 412, in calibrate
-    calib.calibrate(calibration_data, self._recipe_manager)
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 328, in calibrate
-    self._calibrate_step(
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/calibrator.py", line 518, in _calibrate_step
-    signature_output = tfl_interpreter_utils.invoke_interpreter_signature(
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/ai_edge_quantizer/utils/tfl_interpreter_utils.py", line 111, in invoke_interpreter_signature
-    input_data = signature_input[input_name]
-                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^
-KeyError: 'args_0'
-
+    校准 样本16份 stripped=True profiler=True
+    ★ 校准成功 (stripped=True profiler=True)
+    ★★ static_wi8_ai8 成功 67.6 MB  63s  压缩比 3.97x
 
   ---- 试 recipe: dynamic_wi8_afp32 ----
     need_calibration = False
@@ -71,6 +42,15 @@ KeyError: 'args_0'
   --- 审计 dit_block0_1024_fp32.tflite (268.08 MB) ---
   张量秩直方图 = {3: 69, 2: 41, 1: 46, 0: 7, 4: 66, 5: 6}
   张量类型     = {'FLOAT32': 207, 'INT32': 28}
+  5D+ 张量个数 = 6
+    IN  serving_default_args_0 [1, 4096, 2048]
+    IN  serving_default_args_1 [1, 256, 1024]
+    IN  serving_default_args_2 [1, 2048]
+    IN  serving_default_args_3 [1, 6144]
+    OUT serving_default_output_0_output [1, 4096, 2048]
+  --- 审计 dit_block0_1024_static_wi8_ai8.tflite (67.60 MB) ---
+  张量秩直方图 = {3: 69, 2: 41, 1: 46, 0: 7, 4: 68, 5: 6}
+  张量类型     = {'INT8': 209, 'INT32': 28}
   5D+ 张量个数 = 6
     IN  serving_default_args_0 [1, 4096, 2048]
     IN  serving_default_args_1 [1, 256, 1024]
@@ -94,7 +74,7 @@ KeyError: 'args_0'
        7868612  block_ref.npz
             57  diag.txt
       72386208  dit_block_ref.npz
-          5226  export_log.txt
+          3708  export_log.txt
              0  fault.txt
              6  step.txt
         786560  vae_out.npy
@@ -105,11 +85,10 @@ KeyError: 'args_0'
   --- model/ ---
       74028960  dit_block0_1024_dynamic_wi8_afp32.tflite
      281097864  dit_block0_1024_fp32.tflite
+      70888672  dit_block0_1024_static_wi8_ai8.tflite
 
 ================ int8 结果汇总 ================
   fp32 导出        : PASS
+  static_wi8_ai8     : PASS
   dynamic_wi8_afp32  : PASS
 ==============================================
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   520eaa6..c8731cb  main -> main
-
