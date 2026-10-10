@@ -2,44 +2,98 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> R0 transforms shim <<<<<<<<<<<<
 
->>>>>>>>>>>> R1 建 1 层模型 + 读全部权重（含 patch_embed / time_embed / rope） <<<<<<<<<<<<
-  取到 24 个张量（block0 + patch_embed + time_embed）
-  load_state_dict: missing=3 unexpected=0
-    missing: norm_out.linear_1.weight
-    missing: norm_out.linear_2.weight
-    missing: proj_out.weight
-  已载入的关键前缀: ['patch_embed', 'time_embed', 'transformer_blocks']
+>>>>>>>>>>>> R1 建 1 层 + 读权重 <<<<<<<<<<<<
+  载入 24 张量, missing=3 (norm_out/proj_out，block 之后才用，无害)
+  hidden=2048 heads=16 head_dim=128
 
->>>>>>>>>>>> R2 造【真实分布】的输入 <<<<<<<<<<<<
-  latent (1, 16, 1, 128, 128)  ->  5D 输入 (1, 17, 1, 128, 128)
-  patch_embed -> (1, 1, 64, 64, 2048)
-  hidden (1, 4096, 2048)
-  time_embed -> temb (1, 6144)   embedded_timestep (1, 2048)
-  各输入张量量级：
-    hidden   shape=(1, 4096, 2048)      std=   0.0540  min=   -1.509  max=    1.440
-    enc      shape=(1, 256, 1024)       std=   1.0023  min=   -4.252  max=    4.314
-    ets      shape=(1, 2048)            std=   0.1758  min=    0.000  max=    0.403
-    temb     shape=(1, 6144)            std=  12.0738  min=  -79.674  max=   37.315
+>>>>>>>>>>>> R2 真实分布输入（与上一轮同种子，参考可复用） <<<<<<<<<<<<
+    hidden  (1, 4096, 2048)    std=   0.0540 min=   -1.509 max=    1.440
+    enc     (1, 256, 1024)     std=   1.0023 min=   -4.252 max=    4.314
+    ets     (1, 2048)          std=   0.1758 min=    0.000 max=    0.403
+    temb    (1, 6144)          std=  12.0738 min=  -79.674 max=   37.315
 
->>>>>>>>>>>> R3 原版 block 参考输出 + 真实增益 <<<<<<<<<<<<
-    out      shape=(1, 4096, 2048)      std=   1.6601  min=   -9.560  max=   61.609
-  ★ 真实工况下的 block 增益 = 30.74 倍
-  （若远大于 1，说明工况仍不真实；28 层模型每块增益应接近 1）
-  已保存 opt_realistic_ref.npz（手机端比对用）
+>>>>>>>>>>>> R3 原版 block 参考输出 <<<<<<<<<<<<
+  out (1, 4096, 2048)    std=   1.6601 min=   -9.560 max=   61.609
+  输出量程跨度 = 71.1693
 
->>>>>>>>>>>> R4 造优化版 block（RoPE折叠 + 注意力分块 + FF拆8链） <<<<<<<<<<<<
-  FF 激活近似模式 = 'none'
+>>>>>>>>>>>> R4 搭载优化 block 的工厂（切分参数化） <<<<<<<<<<<<
 
->>>>>>>>>>>> R5 等价性自检 <<<<<<<<<<<<
-  优化版 vs 原版: 最大绝对误差 1.144e-05  相对 1.858e-07
-  => PASS
+>>>>>>>>>>>> R5 自检A/B/C（用 chunk1024/FF8 那一版做等价性验证） <<<<<<<<<<<<
+  A 权重折叠      误差 0.000e+00 相对 0.000e+00 => PASS
+  B 归一化+RoPE   误差 0.000e+00 相对 0.000e+00 => PASS
+  C 端到端等价    最大 1.144e-05 相对 1.858e-07 => PASS
 
->>>>>>>>>>>> R6 导出（校准数据也用真实分布！） <<<<<<<<<<<<
-  fp32 300.1 MB
-  ★ 校准完成（32 份真实分布样本）
-  ★ int8 75.8 MB
+>>>>>>>>>>>> R6 自检F 工作集预测（专门防爆本地内存） <<<<<<<<<<<<
+  chunk1024/FF8          激活 8bit  最大单张量: attn分数 [1,16,1024,4096]         64.0 MB
+       hidden [1,4096,2048]                 8.0 MB
+       q/k/v [1,16,4096,128]                8.0 MB
+       attn分数 [1,16,1024,4096]             64.0 MB
+       FF中间 [1,4096,1024]                   4.0 MB
+       FF输出 [1,4096,2048]                   8.0 MB
+  chunk1024/FF8          激活16bit  最大单张量: attn分数 [1,16,1024,4096]        128.0 MB
+       ⚠️  超过 100 MB，很可能触发本地内存退化
+       hidden [1,4096,2048]                16.0 MB
+       q/k/v [1,16,4096,128]               16.0 MB
+       attn分数 [1,16,1024,4096]            128.0 MB
+       FF中间 [1,4096,1024]                   8.0 MB
+       FF输出 [1,4096,2048]                  16.0 MB
+  chunk512/FF16          激活16bit  最大单张量: attn分数 [1,16,512,4096]          64.0 MB
+       hidden [1,4096,2048]                16.0 MB
+       q/k/v [1,16,4096,128]               16.0 MB
+       attn分数 [1,16,512,4096]              64.0 MB
+       FF中间 [1,4096,512]                    4.0 MB
+       FF输出 [1,4096,2048]                  16.0 MB
+  chunk256/FF16          激活16bit  最大单张量: attn分数 [1,16,256,4096]          32.0 MB
+       hidden [1,4096,2048]                16.0 MB
+       q/k/v [1,16,4096,128]               16.0 MB
+       attn分数 [1,16,256,4096]              32.0 MB
+       FF中间 [1,4096,512]                    4.0 MB
+       FF输出 [1,4096,2048]                  16.0 MB
+
+>>>>>>>>>>>> R7 导出三个模型 <<<<<<<<<<<<
+
+  ===== blk_ai16_c1024_f8  chunk=1024 FF拆8  static_wi8_ai16 =====
+    等价性 最大绝对误差 1.144e-05 (相对 1.858e-07)
+    FAIL: IndexError list index out of range
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 347, in main
+    sz=os.path.getsize(dst); q=out_quant(dst)
+                               ^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 69, in out_quant
+    tf=_fld(b,ts[oi],1); ty=_i8(b,tf) if tf else 0
+              ~~^^^^
+IndexError: list index out of range
+
+
+  ===== blk_ai16_c512_f16  chunk=512 FF拆16  static_wi8_ai16 =====
+    等价性 最大绝对误差 1.144e-05 (相对 1.858e-07)
+    FAIL: IndexError list index out of range
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 347, in main
+    sz=os.path.getsize(dst); q=out_quant(dst)
+                               ^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 69, in out_quant
+    tf=_fld(b,ts[oi],1); ty=_i8(b,tf) if tf else 0
+              ~~^^^^
+IndexError: list index out of range
+
+
+  ===== blk_ai8_c512_f16  chunk=512 FF拆16  static_wi8_ai8 =====
+    等价性 最大绝对误差 1.144e-05 (相对 1.858e-07)
+    FAIL: IndexError list index out of range
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 347, in main
+    sz=os.path.getsize(dst); q=out_quant(dst)
+                               ^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 69, in out_quant
+    tf=_fld(b,ts[oi],1); ty=_i8(b,tf) if tf else 0
+              ~~^^^^
+IndexError: list index out of range
+
+
+>>>>>>>>>>>> R8 自检D 输出量程覆盖 / E 步长预测 <<<<<<<<<<<<
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  真实增益         : 30.74 倍
-  等价性自检       : PASS
-  产物 blk_opt_real_int8.tflite
+  A 权重折叠   : PASS
+  B 归一化+RoPE: PASS
+  C 端到端等价 : PASS
