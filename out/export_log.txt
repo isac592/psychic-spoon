@@ -1,107 +1,285 @@
 
 >>>>>>>>>>>> STEP: import <<<<<<<<<<<<
-python 3.11.17 (main, Oct  1 2026, 14:32:31) [GCC 13.3.0]
 torch 2.13.0+cu130 | diffusers 0.41.0
 
->>>>>>>>>>>> STEP: B1 加载 DiT（手动构造，绕开 from_pretrained） <<<<<<<<<<<<
-  读 config ...
-  config keys: ['_class_name', '_diffusers_version', 'adaln_lora_dim', 'attention_head_dim', 'concat_padding_mask', 'controlnet_block_every_n', 'crossattn_proj_in_channels', 'encoder_hidden_states_channels', 'extra_pos_embed_type', 'img_context_dim_in', 'img_context_dim_out', 'img_context_num_tokens', 'in_channels', 'max_size', 'mlp_ratio', 'num_attention_heads', 'num_layers', 'out_channels', 'patch_size', 'rope_scale', 'text_embed_dim', 'use_crossattn_projection']
-  构造空模型 from_config ...
-  构造完成 9s  参数=1956405248
+>>>>>>>>>>>> STEP: B1 加载 DiT <<<<<<<<<<<<
+  加载完成 params=1956405248 dtype=torch.float32
 
->>>>>>>>>>>> STEP: B1b 下载权重 <<<<<<<<<<<<
-  权重文件 3.91 GB  13s
-
->>>>>>>>>>>> STEP: B1c load_state_dict <<<<<<<<<<<<
-  读入 567 个张量  0s
-  missing=0  unexpected=0
-
->>>>>>>>>>>> STEP: B2 DiT 结构 <<<<<<<<<<<<
-  params=1956405248 (1.956 B)  dtype=torch.float32
-     patch_embed            CosmosPatchEmbed (139264)
-     rope                   CosmosRotaryPosEmbed (0)
-     time_embed             CosmosEmbedding (16779264)
-     transformer_blocks     ModuleList (1937782784)
-     norm_out               CosmosAdaLayerNorm (1572864)
-     proj_out               Linear (131072)
-  Conv3d=0 Conv2d=0 Linear=454
-
->>>>>>>>>>>> STEP: B3 block 结构与签名 <<<<<<<<<<<<
-  blocks 属性名 = transformer_blocks, 数量 28
-  block[0] CosmosTransformerBlock  params=69206528 (132.0 MB bf16)
-     norm1            CosmosAdaLayerNormZero (2097152)
-     attn1            Attention (16777472)
-     norm2            CosmosAdaLayerNormZero (2097152)
-     attn2            Attention (12583168)
-     norm3            CosmosAdaLayerNormZero (2097152)
-     ff               FeedForward (33554432)
-  --- forward 签名 ---
-     (self, hidden_states: torch.Tensor, encoder_hidden_states: torch.Tensor | None | tuple[torch.Tensor | None, torch.Tensor | None], embedded_timestep: torch.Tensor, temb: torch.Tensor | None = None, image_rotary_emb: torch.Tensor | None = None, extra_pos_emb: torch.Tensor | None = None, attention_mask: torch.Tensor | None = None, controlnet_residual: torch.Tensor | None = None, latents: torch.Tensor | None = None, block_idx: int | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]
-  --- forward 源码 ---
+>>>>>>>>>>>> STEP: B2 顶层 forward 源码 <<<<<<<<<<<<
     def forward(
         self,
         hidden_states: torch.Tensor,
-        encoder_hidden_states: torch.Tensor | None | tuple[torch.Tensor | None, torch.Tensor | None],
-        embedded_timestep: torch.Tensor,
-        temb: torch.Tensor | None = None,
-        image_rotary_emb: torch.Tensor | None = None,
-        extra_pos_emb: torch.Tensor | None = None,
+        timestep: torch.Tensor,
+        encoder_hidden_states: torch.Tensor,
+        block_controlnet_hidden_states: list[torch.Tensor] | None = None,
         attention_mask: torch.Tensor | None = None,
-        controlnet_residual: torch.Tensor | None = None,
-        latents: torch.Tensor | None = None,
-        block_idx: int | None = None,
-    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
-        if self.before_proj is not None:
-            hidden_states = self.before_proj(hidden_states) + latents
+        fps: int | None = None,
+        condition_mask: torch.Tensor | None = None,
+        padding_mask: torch.Tensor | None = None,
+        return_dict: bool = True,
+    ) -> tuple[torch.Tensor] | Transformer2DModelOutput:
+        """
+        The [`CosmosTransformer3DModel`] forward method.
 
-        if extra_pos_emb is not None:
-            hidden_states = hidden_states + extra_pos_emb
+        Args:
+            hidden_states (`torch.Tensor` of shape `(batch_size, num_channels, num_frames, height, width)`):
+                Input `hidden_states`.
+            timestep (`torch.LongTensor`):
+                Used to indicate denoising step.
+            encoder_hidden_states (`torch.Tensor` of shape `(batch_size, sequence_len, embed_dims)`):
+                Conditional embeddings (embeddings computed from the input conditions such as prompts) to use.
+            block_controlnet_hidden_states (`list` of `torch.Tensor`, *optional*):
+                A list of tensors that if specified are added to the residuals of transformer blocks.
+            attention_mask (`torch.Tensor`, *optional*):
+                Mask applied to `encoder_hidden_states` during attention.
+            fps (`int`, *optional*):
+                Frames per second of the input video used to compute the rotary positional embeddings.
+            condition_mask (`torch.Tensor`, *optional*):
+                Mask channel concatenated to `hidden_states` to indicate the conditioning region.
+            padding_mask (`torch.Tensor`, *optional*):
+                Padding mask concatenated to `hidden_states` when `concat_padding_mask` is enabled.
+            return_dict (`bool`, *optional*, defaults to `True`):
+                Whether or not to return a [`~models.transformer_2d.Transformer2DModelOutput`] instead of a plain
+                tuple.
 
-        # 1. Self Attention
-        norm_hidden_states, gate = self.norm1(hidden_states, embedded_timestep, temb)
-        attn_output = self.attn1(norm_hidden_states, image_rotary_emb=image_rotary_emb)
-        hidden_states = hidden_states + gate * attn_output
+        Returns:
+            If `return_dict` is True, an [`~models.transformer_2d.Transformer2DModelOutput`] is returned, otherwise a
+            `tuple` where the first element is the sample tensor.
+        """
+        batch_size, num_channels, num_frames, height, width = hidden_states.shape
 
-        # 2. Cross Attention
-        norm_hidden_states, gate = self.norm2(hidden_states, embedded_timestep, temb)
-        attn_output = self.attn2(
-            norm_hidden_states, encoder_hidden_states=encoder_hidden_states, attention_mask=attention_mask
+        # 1. Concatenate padding mask if needed & prepare attention mask
+        if condition_mask is not None:
+            hidden_states = torch.cat([hidden_states, condition_mask], dim=1)
+
+        if self.config.concat_padding_mask:
+            padding_mask_resized = transforms.functional.resize(
+                padding_mask, list(hidden_states.shape[-2:]), interpolation=transforms.InterpolationMode.NEAREST
+            )
+            hidden_states = torch.cat(
+                [hidden_states, padding_mask_resized.unsqueeze(2).repeat(batch_size, 1, num_frames, 1, 1)], dim=1
+            )
+
+        if attention_mask is not None:
+            attention_mask = attention_mask.unsqueeze(1).unsqueeze(1)  # [B, 1, 1, S]
+
+        # 2. Generate positional embeddings
+        image_rotary_emb = self.rope(hidden_states, fps=fps)
+        extra_pos_emb = self.learnable_pos_embed(hidden_states) if self.config.extra_pos_embed_type else None
+
+        # 3. Patchify input
+        p_t, p_h, p_w = self.config.patch_size
+        post_patch_num_frames = num_frames // p_t
+        post_patch_height = height // p_h
+        post_patch_width = width // p_w
+
+        hidden_states = self.patch_embed(hidden_states)
+        hidden_states = hidden_states.flatten(1, 3)  # [B, T, H, W, C] -> [B, THW, C]
+
+        # 4. Timestep embeddings
+        if timestep.ndim == 1:
+            temb, embedded_timestep = self.time_embed(hidden_states, timestep)
+        elif timestep.ndim == 5:
+            assert timestep.shape == (batch_size, 1, num_frames, 1, 1), (
+                f"Expected timestep to have shape [B, 1, T, 1, 1], but got {timestep.shape}"
+            )
+            timestep = timestep.flatten()
+            temb, embedded_timestep = self.time_embed(hidden_states, timestep)
+            # We can do this because num_frames == post_patch_num_frames, as p_t is 1
+            temb, embedded_timestep = (
+                x.view(batch_size, post_patch_num_frames, 1, 1, -1)
+                .expand(-1, -1, post_patch_height, post_patch_width, -1)
+                .flatten(1, 3)
+                for x in (temb, embedded_timestep)
+            )  # [BT, C] -> [B, T, 1, 1, C] -> [B, T, H, W, C] -> [B, THW, C]
+        else:
+            raise ValueError(f"Expected timestep to have shape [B, 1, T, 1, 1] or [T], but got {timestep.shape}")
+
+        # 5. Process encoder hidden states
+        text_context, img_context = (
+            encoder_hidden_states if isinstance(encoder_hidden_states, tuple) else (encoder_hidden_states, None)
         )
-        hidden_states = hidden_states + gate * attn_output
+        if self.config.use_crossattn_projection:
+            text_context = self.crossattn_proj(text_context)
 
-        # 3. Feed Forward
-        norm_hidden_states, gate = self.norm3(hidden_states, embedded_timestep, temb)
-        ff_output = self.ff(norm_hidden_states)
-        hidden_states = hidden_states + gate * ff_output
+        if img_context is not None and self.config.img_context_dim_in:
+            img_context = self.img_context_proj(img_context)
 
-        if controlnet_residual is not None:
-            assert self.after_proj is None
-            # NOTE: this is assumed to be scaled by the controlnet
-            hidden_states += controlnet_residual
+        processed_encoder_hidden_states = (
+            (text_context, img_context) if isinstance(encoder_hidden_states, tuple) else text_context
+        )
 
-        if self.after_proj is not None:
-            assert controlnet_residual is None
-            hs_proj = self.after_proj(hidden_states)
-            return hidden_states, hs_proj
+        # 6. Build controlnet block index map
+        controlnet_block_index_map = {}
+        if block_controlnet_hidden_states is not None:
+            n_blocks = len(self.transformer_blocks)
+            controlnet_block_index_map = {
+                block_idx: block_controlnet_hidden_states[idx]
+                for idx, block_idx in list(enumerate(range(0, n_blocks, self.config.controlnet_block_every_n)))
+            }
 
-        return hidden_states
+        # 7. Transformer blocks
+        for block_idx, block in enumerate(self.transformer_blocks):
+            controlnet_residual = controlnet_block_index_map.get(block_idx)
+            if torch.is_grad_enabled() and self.gradient_checkpointing:
+                hidden_states = self._gradient_checkpointing_func(
+                    block,
+                    hidden_states,
+                    processed_encoder_hidden_states,
+                    embedded_timestep,
+                    temb,
+                    image_rotary_emb,
+                    extra_pos_emb,
+                    attention_mask,
+                    controlnet_residual,
+                )
+            else:
+                hidden_states = block(
+                    hidden_states,
+                    processed_encoder_hidden_states,
+                    embedded_timestep,
+                    temb,
+                    image_rotary_emb,
+                    extra_pos_emb,
+                    attention_mask,
+                    controlnet_residual,
+                )
+
+        # 8. Output norm & projection & unpatchify
+        hidden_states = self.norm_out(hidden_states, embedded_timestep, temb)
+        hidden_states = self.proj_out(hidden_states)
+        hidden_states = hidden_states.unflatten(2, (p_h, p_w, p_t, -1))
+        hidden_states = hidden_states.unflatten(1, (post_patch_num_frames, post_patch_height, post_patch_width))
+        # NOTE: The permutation order here is not the inverse operation of what happens when patching as usually expected.
+        # It might be a source of confusion to the reader, but this is correct
+        hidden_states = hidden_states.permute(0, 7, 1, 6, 2, 4, 3, 5)
+        hidden_states = hidden_states.flatten(6, 7).flatten(4, 5).flatten(2, 3)
+
+        if not return_dict:
+            return (hidden_states,)
+
+        return Transformer2DModelOutput(sample=hidden_states)
 
 
->>>>>>>>>>>> STEP: B4 顶层 forward 签名 <<<<<<<<<<<<
-  (self, hidden_states: torch.Tensor, timestep: torch.Tensor, encoder_hidden_states: torch.Tensor, block_controlnet_hidden_states: list[torch.Tensor] | None = None, attention_mask: torch.Tensor | None = None, fps: int | None = None, condition_mask: torch.Tensor | None = None, padding_mask: torch.Tensor | None = None, return_dict: bool = True) -> tuple[torch.Tensor] | diffusers.models.modeling_outputs.Transformer2DModelOutput
+>>>>>>>>>>>> STEP: B3 rope / time_embed / patch_embed 细节 <<<<<<<<<<<<
+  rope = CosmosRotaryPosEmbed
+     forward 签名: (self, hidden_states: torch.Tensor, fps: int | None = None) -> tuple[torch.Tensor, torch.Tensor]
+  time_embed = CosmosEmbedding
+     forward 签名: (self, hidden_states: torch.Tensor, timestep: torch.LongTensor) -> torch.Tensor
+       time_proj          Timesteps
+       t_embedder         CosmosTimestepEmbedding
+       norm               RMSNorm
+  patch_embed = CosmosPatchEmbed
+     forward 签名: (self, hidden_states: torch.Tensor) -> torch.Tensor
+       proj               Linear
+  proj_out = Linear
+     forward 签名: (self, input: torch.Tensor) -> torch.Tensor
+  norm_out = CosmosAdaLayerNorm
+     forward 签名: (self, hidden_states: torch.Tensor, embedded_timestep: torch.Tensor, temb: torch.Tensor | None = None) -> torch.Tensor
+       activation         SiLU
+       norm               LayerNorm
+       linear_1           Linear
+       linear_2           Linear
+  --- CosmosRotaryPosEmbed.forward 源码 ---
+    def forward(self, hidden_states: torch.Tensor, fps: int | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_size, num_channels, num_frames, height, width = hidden_states.shape
+        pe_size = [num_frames // self.patch_size[0], height // self.patch_size[1], width // self.patch_size[2]]
+        device = hidden_states.device
+
+        h_theta = 10000.0 * self.h_ntk_factor
+        w_theta = 10000.0 * self.w_ntk_factor
+        t_theta = 10000.0 * self.t_ntk_factor
+
+        seq = torch.arange(max(self.max_size), device=device, dtype=torch.float32)
+        dim_h_range = (
+            torch.arange(0, self.dim_h, 2, device=device, dtype=torch.float32)[: (self.dim_h // 2)] / self.dim_h
+        )
+        dim_w_range = (
+            torch.arange(0, self.dim_w, 2, device=device, dtype=torch.float32)[: (self.dim_w // 2)] / self.dim_w
+        )
+        dim_t_range = (
+            torch.arange(0, self.dim_t, 2, device=device, dtype=torch.float32)[: (self.dim_t // 2)] / self.dim_t
+        )
+        h_spatial_freqs = 1.0 / (h_theta**dim_h_range)
+        w_spatial_freqs = 1.0 / (w_theta**dim_w_range)
+        temporal_freqs = 1.0 / (t_theta**dim_t_range)
+
+        emb_h = torch.outer(seq[: pe_size[1]], h_spatial_freqs)[None, :, None, :].repeat(pe_size[0], 1, pe_size[2], 1)
+        emb_w = torch.outer(seq[: pe_size[2]], w_spatial_freqs)[None, None, :, :].repeat(pe_size[0], pe_size[1], 1, 1)
+
+        # Apply sequence scaling in temporal dimension
+        if fps is None:
+            # Images
+            emb_t = torch.outer(seq[: pe_size[0]], temporal_freqs)
+        else:
+            # Videos
+            emb_t = torch.outer(seq[: pe_size[0]] / fps * self.base_fps, temporal_freqs)
+
+        emb_t = emb_t[:, None, None, :].repeat(1, pe_size[1], pe_size[2], 1)
+        freqs = torch.cat([emb_t, emb_h, emb_w] * 2, dim=-1).flatten(0, 2).float()
+        cos = torch.cos(freqs)
+        sin = torch.sin(freqs)
+        return cos, sin
+
+
+>>>>>>>>>>>> STEP: B4 用真实前向确定输入形状 <<<<<<<<<<<<
+  前向失败: NameError name 'transforms' is not defined
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 74, in main
+    out=dit(hidden_states=hs,timestep=ts,encoder_hidden_states=ctx,return_dict=False)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 735, in forward
+    padding_mask_resized = transforms.functional.resize(
+                           ^^^^^^^^^^
+NameError: name 'transforms' is not defined
+
+
+>>>>>>>>>>>> STEP: B5 提取 block[0] 并导出 <<<<<<<<<<<<
+  block[0] CosmosTransformerBlock params=69206528
+  rope 签名: (self, hidden_states: torch.Tensor, fps: int | None = None) -> tuple[torch.Tensor, torch.Tensor]
+  rope 生成失败: TypeError CosmosRotaryPosEmbed.forward() got an unexpected keyword argument 'max_size'
+  用随机 rope 代替
+  block 导出失败: RuntimeError The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 108, in main
+    y=b0(hidden,enc,ets,temb=temb,image_rotary_emb=(cos,sin))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 428, in forward
+    norm_hidden_states, gate = self.norm1(hidden_states, embedded_timestep, temb)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 139, in forward
+    embedded_timestep = embedded_timestep + temb
+                        ~~~~~~~~~~~~~~~~~~^~~~~~
+RuntimeError: The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
+
 
 >>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
   --- out/ ---
       57352508  block.tflite
            437  block_ops.txt
        7868612  block_ref.npz
-          5109  export_log.txt
+         14356  export_log.txt
              0  fault.txt
              6  step.txt
         786560  vae_out.npy
          65664  vae_z.npy
   --- model/ ---
      (空)
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   04692c3..e733a4e  main -> main
-
