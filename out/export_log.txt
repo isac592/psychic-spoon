@@ -3,52 +3,102 @@
 python 3.11.17 (main, Oct  1 2026, 14:32:31) [GCC 13.3.0]
 torch 2.13.0+cu130 | diffusers 0.41.0
 
->>>>>>>>>>>> STEP: A1 加载 VAE <<<<<<<<<<<<
-  decoder=73295331 params (279.6 MB fp32)
-  post_quant_conv = QwenImageCausalConv3d(16, 16, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-  decoder Conv3d=33 Conv2d=5
+>>>>>>>>>>>> STEP: B1 加载 DiT（手动构造，绕开 from_pretrained） <<<<<<<<<<<<
+  读 config ...
+  config keys: ['_class_name', '_diffusers_version', 'adaln_lora_dim', 'attention_head_dim', 'concat_padding_mask', 'controlnet_block_every_n', 'crossattn_proj_in_channels', 'encoder_hidden_states_channels', 'extra_pos_embed_type', 'img_context_dim_in', 'img_context_dim_out', 'img_context_num_tokens', 'in_channels', 'max_size', 'mlp_ratio', 'num_attention_heads', 'num_layers', 'out_channels', 'patch_size', 'rope_scale', 'text_embed_dim', 'use_crossattn_projection']
+  构造空模型 from_config ...
+  构造完成 9s  参数=1956405248
 
->>>>>>>>>>>> STEP: A2 原始 3D 路径参考输出 <<<<<<<<<<<<
-  vae.decode(z) -> (1, 3, 1, 256, 256)  mean=-0.30826 std=0.36357 min=-1.0000 max=1.0000
-  已保存 vae_z.npy / vae_out.npy（手机端对答案用）
+>>>>>>>>>>>> STEP: B1b 下载权重 <<<<<<<<<<<<
+  权重文件 3.91 GB  13s
 
->>>>>>>>>>>> STEP: A3 打补丁 + 数值比对 <<<<<<<<<<<<
-  补丁已应用（T=1 时 Conv3d -> Conv2d，取时间维最后一个 tap）
-  补丁后输出 -> (1, 3, 1, 256, 256)  mean=-0.30826 std=0.36357
-  ★ 最大绝对误差 = 0.00000402
-  ★ 平均绝对误差 = 0.00000024
-  ★ allclose(atol=1e-4) = True
+>>>>>>>>>>>> STEP: B1c load_state_dict <<<<<<<<<<<<
+  读入 567 个张量  0s
+  missing=0  unexpected=0
 
->>>>>>>>>>>> STEP: A4 导出 VAE 为 TFLite <<<<<<<<<<<<
-  尝试 litert_torch
-  ★★ VAE TFLITE OK  96.8 MB  25s
+>>>>>>>>>>>> STEP: B2 DiT 结构 <<<<<<<<<<<<
+  params=1956405248 (1.956 B)  dtype=torch.float32
+     patch_embed            CosmosPatchEmbed (139264)
+     rope                   CosmosRotaryPosEmbed (0)
+     time_embed             CosmosEmbedding (16779264)
+     transformer_blocks     ModuleList (1937782784)
+     norm_out               CosmosAdaLayerNorm (1572864)
+     proj_out               Linear (131072)
+  Conv3d=0 Conv2d=0 Linear=454
 
->>>>>>>>>>>> STEP: B1 加载 DiT (1.96B, bf16) <<<<<<<<<<<<
-  DiT 失败: ValueError `low_cpu_mem_usage` cannot be False when `keep_in_fp32_modules` is True.
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 125, in main
-    dit=CosmosTransformer3DModel.from_pretrained(
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/modeling_utils.py", line 1231, in from_pretrained
-    raise ValueError("`low_cpu_mem_usage` cannot be False when `keep_in_fp32_modules` is True.")
-ValueError: `low_cpu_mem_usage` cannot be False when `keep_in_fp32_modules` is True.
+>>>>>>>>>>>> STEP: B3 block 结构与签名 <<<<<<<<<<<<
+  blocks 属性名 = transformer_blocks, 数量 28
+  block[0] CosmosTransformerBlock  params=69206528 (132.0 MB bf16)
+     norm1            CosmosAdaLayerNormZero (2097152)
+     attn1            Attention (16777472)
+     norm2            CosmosAdaLayerNormZero (2097152)
+     attn2            Attention (12583168)
+     norm3            CosmosAdaLayerNormZero (2097152)
+     ff               FeedForward (33554432)
+  --- forward 签名 ---
+     (self, hidden_states: torch.Tensor, encoder_hidden_states: torch.Tensor | None | tuple[torch.Tensor | None, torch.Tensor | None], embedded_timestep: torch.Tensor, temb: torch.Tensor | None = None, image_rotary_emb: torch.Tensor | None = None, extra_pos_emb: torch.Tensor | None = None, attention_mask: torch.Tensor | None = None, controlnet_residual: torch.Tensor | None = None, latents: torch.Tensor | None = None, block_idx: int | None = None) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]
+  --- forward 源码 ---
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        encoder_hidden_states: torch.Tensor | None | tuple[torch.Tensor | None, torch.Tensor | None],
+        embedded_timestep: torch.Tensor,
+        temb: torch.Tensor | None = None,
+        image_rotary_emb: torch.Tensor | None = None,
+        extra_pos_emb: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        controlnet_residual: torch.Tensor | None = None,
+        latents: torch.Tensor | None = None,
+        block_idx: int | None = None,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        if self.before_proj is not None:
+            hidden_states = self.before_proj(hidden_states) + latents
 
+        if extra_pos_emb is not None:
+            hidden_states = hidden_states + extra_pos_emb
+
+        # 1. Self Attention
+        norm_hidden_states, gate = self.norm1(hidden_states, embedded_timestep, temb)
+        attn_output = self.attn1(norm_hidden_states, image_rotary_emb=image_rotary_emb)
+        hidden_states = hidden_states + gate * attn_output
+
+        # 2. Cross Attention
+        norm_hidden_states, gate = self.norm2(hidden_states, embedded_timestep, temb)
+        attn_output = self.attn2(
+            norm_hidden_states, encoder_hidden_states=encoder_hidden_states, attention_mask=attention_mask
+        )
+        hidden_states = hidden_states + gate * attn_output
+
+        # 3. Feed Forward
+        norm_hidden_states, gate = self.norm3(hidden_states, embedded_timestep, temb)
+        ff_output = self.ff(norm_hidden_states)
+        hidden_states = hidden_states + gate * ff_output
+
+        if controlnet_residual is not None:
+            assert self.after_proj is None
+            # NOTE: this is assumed to be scaled by the controlnet
+            hidden_states += controlnet_residual
+
+        if self.after_proj is not None:
+            assert controlnet_residual is None
+            hs_proj = self.after_proj(hidden_states)
+            return hidden_states, hs_proj
+
+        return hidden_states
+
+
+>>>>>>>>>>>> STEP: B4 顶层 forward 签名 <<<<<<<<<<<<
+  (self, hidden_states: torch.Tensor, timestep: torch.Tensor, encoder_hidden_states: torch.Tensor, block_controlnet_hidden_states: list[torch.Tensor] | None = None, attention_mask: torch.Tensor | None = None, fps: int | None = None, condition_mask: torch.Tensor | None = None, padding_mask: torch.Tensor | None = None, return_dict: bool = True) -> tuple[torch.Tensor] | diffusers.models.modeling_outputs.Transformer2DModelOutput
 
 >>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
   --- out/ ---
       57352508  block.tflite
            437  block_ops.txt
        7868612  block_ref.npz
-          2042  export_log.txt
+          5109  export_log.txt
              0  fault.txt
              6  step.txt
         786560  vae_out.npy
          65664  vae_z.npy
   --- model/ ---
-     101511868  vae_decoder.tflite
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   8e6a439..4ff6b4f  main -> main
-
+     (空)
