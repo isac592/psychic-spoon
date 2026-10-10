@@ -1,44 +1,81 @@
-  dispatch_attention_fn: True
 torch 2.13.0+cu130 | diffusers 0.41.0
+aeq: True
 
->>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
+===== be_qk  q@k^T  (34.4 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 4096)
+  fp32 2 KB
+  ★ int8 2 KB
 
->>>>>>>>>>>> B1 建 1 层 + 读 block[0] <<<<<<<<<<<<
-  hidden=2048  attn1.heads=16  head_dim=128
+===== be_qk_c512  q@k^T 分块512  (34.4 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 4096)
+  fp32 7 KB
+  ★ int8 9 KB
 
->>>>>>>>>>>> B2 造输入 + rope <<<<<<<<<<<<
-  rope cos(4096, 128) sin(4096, 128)
+===== be_qk_c1024  q@k^T 分块1024  (34.4 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 4096)
+  fp32 4 KB
+  ★ int8 6 KB
 
->>>>>>>>>>>> B3 数值校验（分块 vs 不分块必须一致） <<<<<<<<<<<<
-  chunk=512   最大绝对误差 0.000e+00  相对 0.00e+00  OK
-  chunk=1024  最大绝对误差 0.000e+00  相对 0.00e+00  OK
-  chunk=2048  最大绝对误差 0.000e+00  相对 0.00e+00  OK
+===== be_softmax  纯 softmax  (0.0 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 4096)
+  fp32 1 KB
+  ★ int8 1 KB
 
->>>>>>>>>>>> B4 导出 <<<<<<<<<<<<
+===== be_pv  P@v  (34.4 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 2 KB
+  ★ int8 2 KB
 
-===== attn1_full (chunk=全量) =====
-  fp32 76.0 MB
-  ★ int8 19.2 MB
+===== be_sdpa  完整 sdpa  (68.7 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 3 KB
+  ★ int8 4 KB
 
-===== attn1_c2048 (chunk=2048) =====
-  fp32 76.0 MB
-  ★ int8 19.2 MB
+===== be_sdpa_c512  sdpa 分块512  (68.7 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 14 KB
+  ★ int8 17 KB
 
-===== attn1_c1024 (chunk=1024) =====
-  fp32 76.0 MB
-  ★ int8 19.2 MB
+===== be_sdpa_c1024  sdpa 分块1024  (68.7 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 8 KB
+  ★ int8 10 KB
 
-===== attn1_c512 (chunk=512) =====
-  fp32 76.0 MB
-  ★ int8 19.2 MB
+===== be_rope_q  RoPE 作用在 q  (0.0 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 4099 KB
+  ★ int8 1028 KB
 
-===== attn1_c256 (chunk=256) =====
-  fp32 76.1 MB
-  ★ int8 19.2 MB
+===== be_rope_k  RoPE 作用在 k  (0.0 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 4099 KB
+  ★ int8 1028 KB
+
+===== be_norm  末维 RMSNorm  (0.0 GFLOPs) =====
+  前向 OK -> (1, 16, 4096, 128)
+  fp32 2 KB
+  ★ int8 3 KB
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  attn1_full     chunk=全量       int8  19.2 MB
-  attn1_c2048    chunk=2048     int8  19.2 MB
-  attn1_c1024    chunk=1024     int8  19.2 MB
-  attn1_c512     chunk=512      int8  19.2 MB
-  attn1_c256     chunk=256      int8  19.2 MB
+  be_qk_fp32         q@k^T              fp32        2 KB
+  be_qk_int8         q@k^T              int8        2 KB
+  be_qk_c512_fp32    q@k^T 分块512        fp32        7 KB
+  be_qk_c512_int8    q@k^T 分块512        int8        9 KB
+  be_qk_c1024_fp32   q@k^T 分块1024       fp32        4 KB
+  be_qk_c1024_int8   q@k^T 分块1024       int8        6 KB
+  be_softmax_fp32    纯 softmax          fp32        1 KB
+  be_softmax_int8    纯 softmax          int8        1 KB
+  be_pv_fp32         P@v                fp32        2 KB
+  be_pv_int8         P@v                int8        2 KB
+  be_sdpa_fp32       完整 sdpa            fp32        3 KB
+  be_sdpa_int8       完整 sdpa            int8        4 KB
+  be_sdpa_c512_fp32  sdpa 分块512         fp32       14 KB
+  be_sdpa_c512_int8  sdpa 分块512         int8       17 KB
+  be_sdpa_c1024_fp32 sdpa 分块1024        fp32        8 KB
+  be_sdpa_c1024_int8 sdpa 分块1024        int8       10 KB
+  be_rope_q_fp32     RoPE 作用在 q         fp32     4099 KB
+  be_rope_q_int8     RoPE 作用在 q         int8     1028 KB
+  be_rope_k_fp32     RoPE 作用在 k         fp32     4099 KB
+  be_rope_k_int8     RoPE 作用在 k         int8     1028 KB
+  be_norm_fp32       末维 RMSNorm         fp32        2 KB
+  be_norm_int8       末维 RMSNorm         int8        3 KB

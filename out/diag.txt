@@ -1,4 +1,4 @@
-try https://paste.rs/lipTV
-got 11060 bytes
+try https://paste.rs/yaRne
+got 8183 bytes
 verified
 OK=1
