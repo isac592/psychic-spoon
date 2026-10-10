@@ -283,3 +283,6 @@ RuntimeError: The size of tensor a (6144) must match the size of tensor b (2048)
          65664  vae_z.npy
   --- model/ ---
      (空)
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   8408839..5fa2557  main -> main
+
