@@ -12,13 +12,34 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> R2 造【真实分布】的输入 <<<<<<<<<<<<
   latent (1, 16, 1, 128, 128)  ->  5D 输入 (1, 17, 1, 128, 128)
+  patch_embed -> (1, 1, 64, 64, 2048)
+  hidden (1, 4096, 2048)
+  time_embed -> temb (1, 6144)   embedded_timestep (1, 2048)
+  各输入张量量级：
+    hidden   shape=(1, 4096, 2048)      std=   0.0540  min=   -1.509  max=    1.440
+    enc      shape=(1, 256, 1024)       std=   1.0023  min=   -4.252  max=    4.314
+    ets      shape=(1, 2048)            std=   0.1758  min=    0.000  max=    0.403
+    temb     shape=(1, 6144)            std=  12.0738  min=  -79.674  max=   37.315
 
-!!!!!! 顶层异常: TypeError not all arguments converted during string formatting
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 291, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 106, in main
-    log("  patch_embed -> %s"%((tuple(pe.shape)) if hasattr(pe,'shape') else type(pe)))
-        ~~~~~~~~~~~~~~~~~~~~~^^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TypeError: not all arguments converted during string formatting
+>>>>>>>>>>>> R3 原版 block 参考输出 + 真实增益 <<<<<<<<<<<<
+    out      shape=(1, 4096, 2048)      std=   1.6601  min=   -9.560  max=   61.609
+  ★ 真实工况下的 block 增益 = 30.74 倍
+  （若远大于 1，说明工况仍不真实；28 层模型每块增益应接近 1）
+  已保存 opt_realistic_ref.npz（手机端比对用）
 
+>>>>>>>>>>>> R4 造优化版 block（RoPE折叠 + 注意力分块 + FF拆8链） <<<<<<<<<<<<
+  FF 激活近似模式 = 'none'
+
+>>>>>>>>>>>> R5 等价性自检 <<<<<<<<<<<<
+  优化版 vs 原版: 最大绝对误差 1.144e-05  相对 1.858e-07
+  => PASS
+
+>>>>>>>>>>>> R6 导出（校准数据也用真实分布！） <<<<<<<<<<<<
+  fp32 300.1 MB
+  ★ 校准完成（32 份真实分布样本）
+  ★ int8 75.8 MB
+
+>>>>>>>>>>>> 汇总 <<<<<<<<<<<<
+  真实增益         : 30.74 倍
+  等价性自检       : PASS
+  产物 blk_opt_real_int8.tflite
