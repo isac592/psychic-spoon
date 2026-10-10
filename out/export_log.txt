@@ -1,35 +1,54 @@
-torch 2.13.0+cu130
+torch 2.13.0+cu130 | diffusers 0.41.0
 
-===== sp_mono_n8192  (4096, 2048)  基线 N=8192 单块  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.1 MB
+>>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
 
-===== sp_split2_n8192  (4096, 2048)  N 拆 2 段 (N=4096)  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.1 MB
+>>>>>>>>>>>> B1 建 1 层模型 + 读 block[0] 权重 <<<<<<<<<<<<
+  下载 16s 取到 20 张量
+  hidden=2048 enc=1024
 
-===== sp_split4_n8192  (4096, 2048)  N 拆 4 段 (N=2048)  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.1 MB
+>>>>>>>>>>>> B2 看 ff 的内部结构（拆分要用） <<<<<<<<<<<<
+  ff = FeedForward
+    net.0.proj                     Linear(2048 -> 8192)
+    net.1                          Dropout
+    net.2                          Linear(8192 -> 2048)
+  子模块 net                  ModuleList
+      0                    GELU
+      1                    Dropout
+      2                    Linear
 
-===== sp_split8_n8192  (4096, 2048)  N 拆 8 段 (N=1024)  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.1 MB
+>>>>>>>>>>>> B3 造输入 + rope <<<<<<<<<<<<
+  rope cos(4096, 128) sin(4096, 128)
+  ff 里找到 2 个 Linear: [(2048, 8192), (8192, 2048)]
+  fc1 2048->8192   fc2 8192->2048   拆 8 链
 
-===== sp_mono_k8192  (4096, 8192)  基线 K=8192 单块  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.0 MB
+>>>>>>>>>>>> B4 搭拆 8 链的 FF <<<<<<<<<<<<
+  没探到激活模块，用 F.gelu（approximate='none'）
+  激活函数 = GELU
 
-===== sp_split4_k8192  (4096, 8192)  K 拆 4 段 (K=2048)  137.4 GFLOPs =====
-  fp32 64.0 MB
-  ★ int8 16.1 MB
+>>>>>>>>>>>> B5 导出 <<<<<<<<<<<<
 
-================ 汇总 ================
-  名字                   说明                           GFLOPs    int8 MB
-  sp_mono_n8192        基线 N=8192 单块                  137.4       16.1
-  sp_split2_n8192      N 拆 2 段 (N=4096)              137.4       16.1
-  sp_split4_n8192      N 拆 4 段 (N=2048)              137.4       16.1
-  sp_split8_n8192      N 拆 8 段 (N=1024)              137.4       16.1
-  sp_mono_k8192        基线 K=8192 单块                  137.4       16.0
-  sp_split4_k8192      K 拆 4 段 (K=2048)              137.4       16.1
-=====================================
+===== blk_part_attn1  真实 norm1+attn1 =====
+  前向 OK -> (1, 4096, 2048)   params=18874624 (72.0 MB fp32)
+  fp32 76.0 MB
+  ★ int8 19.2 MB
+
+===== blk_part_attn2  真实 norm2+attn2 =====
+  前向 OK -> (1, 4096, 2048)   params=14680320 (56.0 MB fp32)
+  fp32 56.0 MB
+  ★ int8 14.2 MB
+
+===== blk_part_ff  真实 norm3+ff =====
+  前向 OK -> (1, 4096, 2048)   params=35651584 (136.0 MB fp32)
+  fp32 136.0 MB
+  ★ int8 34.2 MB
+
+===== blk_ffsplit  完整 block，FF 拆 8 链 =====
+  前向 OK -> (1, 4096, 2048)   params=69206528 (264.0 MB fp32)
+  fp32 268.1 MB
+  ★ int8 67.8 MB
+
+>>>>>>>>>>>> 汇总 <<<<<<<<<<<<
+  blk_part_attn1     真实 norm1+attn1           int8   19.2 MB
+  blk_part_attn2     真实 norm2+attn2           int8   14.2 MB
+  blk_part_ff        真实 norm3+ff              int8   34.2 MB
+  blk_ffsplit        完整 block，FF 拆 8 链        int8   67.8 MB
