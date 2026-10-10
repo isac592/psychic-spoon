@@ -102,3 +102,6 @@ torch 2.13.0+cu130 | diffusers 0.41.0
          65664  vae_z.npy
   --- model/ ---
      (空)
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   04692c3..e733a4e  main -> main
+
