@@ -1,20 +1,62 @@
-name: MiniT2I P0 v2
+name: Anima Probe
 on: workflow_dispatch
 permissions:
   contents: write
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: |
+      - name: 安装依赖
+        run: |
           pip install --index-url https://download.pytorch.org/whl/cpu torch
           pip install numpy transformers diffusers safetensors huggingface_hub
+          pip install litert-torch || true
           pip install ai-edge-torch || true
-      - run: |
-          curl -fsSL -o exp.py https://paste.rs/RH14S
-          python exp.py
+      - name: 下载脚本（多源容错）
+        run: |
+          OK=0
+          for u in \
+            https://paste.rs/RHl4S \
+            https://paste.rs/6c4JR \
+            https://paste.rs/A1qcA \
+            https://paste.rs/qxkVp
+          do
+            echo "---- 尝试 $u ----"
+            if curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors --max-time 60 -o exp.py "$u"; then
+              SZ=$(wc -c < exp.py)
+              echo "下载到 $SZ 字节"
+              if [ "$SZ" -gt 2000 ] && head -1 exp.py | grep -qE "^(import|#|from)"; then
+                echo "校验通过"; OK=1; break
+              else
+                echo "内容不对，换下一个源"
+              fi
+            fi
+            sleep 3
+          done
+          if [ "$OK" != "1" ]; then echo "所有源都失败"; exit 1; fi
+          head -3 exp.py
+      - name: 运行
+        run: python exp.py
+      - name: 小文件提交回仓库
+        if: always()
+        run: |
+          mkdir -p out
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add -f out/ || true
+          git commit -m "anima probe" || true
+          git push || true
+      - name: 大文件走 Release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -la model/ || true
+          gh release delete anima --yes --cleanup-tag 2>/dev/null || true
+          gh release create anima --title "Anima artifacts" --notes "auto" 2>/dev/null || true
+          gh release upload anima model/* --clobber 2>/dev/null || echo "没有 model/ 文件"
