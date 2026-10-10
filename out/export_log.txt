@@ -74,3 +74,6 @@ Traceback (most recent call last):
     raise AssertionError("%s 形状不变式被破坏" % tag)
 AssertionError: QwenImageResidualBlock 形状不变式被破坏
 
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   7ad8a90..c1443c0  main -> main
+
