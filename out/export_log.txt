@@ -1,3 +1,4 @@
+  dispatch_attention_fn: True
 torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
@@ -9,34 +10,35 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   rope cos(4096, 128) sin(4096, 128)
 
 >>>>>>>>>>>> B3 数值校验（分块 vs 不分块必须一致） <<<<<<<<<<<<
+  chunk=512   最大绝对误差 0.000e+00  相对 0.00e+00  OK
+  chunk=1024  最大绝对误差 0.000e+00  相对 0.00e+00  OK
+  chunk=2048  最大绝对误差 0.000e+00  相对 0.00e+00  OK
 
-!!!!!! 顶层异常: RuntimeError The size of tensor a (512) must match the size of tensor b (4096) at non-singleton dimension 1
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 198, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 152, in main
-    alt = PartAttn1(blk, cos, sin, C).eval()(hidden, ets, temb)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 145, in forward
-    a = s.attn1(nh, image_rotary_emb=(s.rc, s.rs))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/attention_processor.py", line 607, in forward
-    return self.processor(
-           ^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 128, in __call__
-    parts.append(F.scaled_dot_product_attention(
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: The size of tensor a (512) must match the size of tensor b (4096) at non-singleton dimension 1
+>>>>>>>>>>>> B4 导出 <<<<<<<<<<<<
 
+===== attn1_full (chunk=全量) =====
+  fp32 76.0 MB
+  ★ int8 19.2 MB
+
+===== attn1_c2048 (chunk=2048) =====
+  fp32 76.0 MB
+  ★ int8 19.2 MB
+
+===== attn1_c1024 (chunk=1024) =====
+  fp32 76.0 MB
+  ★ int8 19.2 MB
+
+===== attn1_c512 (chunk=512) =====
+  fp32 76.0 MB
+  ★ int8 19.2 MB
+
+===== attn1_c256 (chunk=256) =====
+  fp32 76.1 MB
+  ★ int8 19.2 MB
+
+>>>>>>>>>>>> 汇总 <<<<<<<<<<<<
+  attn1_full     chunk=全量       int8  19.2 MB
+  attn1_c2048    chunk=2048     int8  19.2 MB
+  attn1_c1024    chunk=1024     int8  19.2 MB
+  attn1_c512     chunk=512      int8  19.2 MB
+  attn1_c256     chunk=256      int8  19.2 MB
