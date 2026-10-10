@@ -11,38 +11,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: 安装依赖
+      - name: install deps
         run: |
           pip install --index-url https://download.pytorch.org/whl/cpu torch
           pip install numpy transformers diffusers safetensors huggingface_hub
           pip install litert-torch || true
           pip install ai-edge-torch || true
-      - name: 下载脚本（多源容错）
+      - name: download script
+        id: dl
+        continue-on-error: true
         run: |
+          mkdir -p out
+          : > out/diag.txt
+          URLS="https://paste.rs/6SUNK https://paste.rs/wBe61 https://paste.rs/EBXRG https://paste.rs/vRCax"
           OK=0
-          for u in \
-            https://paste.rs/6SUNK
-            https://paste.rs/wBe61
-            https://paste.rs/EBXRG
-            https://paste.rs/vRCax
-          do
-            echo "---- 尝试 $u ----"
-            if curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors --max-time 60 -o exp.py "$u"; then
+          for u in $URLS; do
+            echo "try $u" >> out/diag.txt
+            rm -f exp.py
+            if curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors --max-time 90 -o exp.py "$u" 2>> out/diag.txt; then
               SZ=$(wc -c < exp.py)
-              echo "下载到 $SZ 字节"
+              echo "got $SZ bytes" >> out/diag.txt
               if [ "$SZ" -gt 2000 ] && head -1 exp.py | grep -qE "^(import|#|from)"; then
-                echo "校验通过"; OK=1; break
-              else
-                echo "内容不对，换下一个源"
+                echo "verified" >> out/diag.txt
+                OK=1
+                break
               fi
             fi
             sleep 3
           done
-          if [ "$OK" != "1" ]; then echo "所有源都失败"; exit 1; fi
-          head -3 exp.py
-      - name: 运行
+          echo "OK=$OK" >> out/diag.txt
+          cat out/diag.txt
+          if [ "$OK" != "1" ]; then exit 1; fi
+      - name: run
+        if: steps.dl.outcome == 'success'
         run: python exp.py
-      - name: 小文件提交回仓库
+      - name: commit small files
         if: always()
         run: |
           mkdir -p out
@@ -51,7 +54,7 @@ jobs:
           git add -f out/ || true
           git commit -m "anima probe" || true
           git push || true
-      - name: 大文件走 Release
+      - name: upload big files to release
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,4 +62,11 @@ jobs:
           ls -la model/ || true
           gh release delete anima --yes --cleanup-tag 2>/dev/null || true
           gh release create anima --title "Anima artifacts" --notes "auto" 2>/dev/null || true
-          gh release upload anima model/* --clobber 2>/dev/null || echo "没有 model/ 文件"
+          gh release upload anima model/* --clobber 2>/dev/null || echo "no model files"
+      - name: report
+        if: always()
+        run: |
+          if [ "${{ steps.dl.outcome }}" != "success" ]; then
+            echo "SCRIPT DOWNLOAD FAILED - see out/diag.txt"
+            exit 1
+          fi
