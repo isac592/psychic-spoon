@@ -21,7 +21,7 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
   1 层模型建好, params=87828992
 
 >>>>>>>>>>>> STEP: B2 惰性读 block[0] 权重（safe_open，不把 1.96B 全读进来） <<<<<<<<<<<<
-  下载 46s, safetensors 分片 1 个
+  下载 17s, safetensors 分片 1 个
   取到 block[0] 张量 20 个
   load_state_dict: missing=7 unexpected=0
   ★ block[0] CosmosTransformerBlock  params=69206528 (264.0 MB fp32)
@@ -37,38 +37,79 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
     ff               FeedForward                  33554432
 
 >>>>>>>>>>>> STEP: B4 造真实形状输入 + 算 rope（1024x1024） <<<<<<<<<<<<
+  输入形状: hidden(1, 4096, 2048)  enc(1, 256, 1024)  embedded_timestep(1, 2048)  temb(1, 6144)
   rope() -> cos(4096, 128) sin(4096, 128)
   ★ rope 是常量（只跟形状有关），可以直接烘进模型
 
 >>>>>>>>>>>> STEP: B5 试跑一次，搞清楚返回结构 <<<<<<<<<<<<
+  ★ 返回结构 = tensor (1, 4096, 2048)
+  已存 dit_block_ref.npz（手机端对答案用）
 
-!!!!!! 顶层异常: RuntimeError The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 316, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 245, in main
-    y = blk(hidden, enc, ets, temb=temb, image_rotary_emb=(cos, sin) if cos is not None else None)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 428, in forward
-    norm_hidden_states, gate = self.norm1(hidden_states, embedded_timestep, temb)
-                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 139, in forward
-    embedded_timestep = embedded_timestep + temb
-                        ~~~~~~~~~~~~~~~~~~^~~~~~
-RuntimeError: The size of tensor a (6144) must match the size of tensor b (2048) at non-singleton dimension 1
+>>>>>>>>>>>> STEP: B6 包一层，把 rope 当常量 buffer 烘进去 <<<<<<<<<<<<
+  包装完成
 
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   a565eb8..5338e6b  main -> main
+>>>>>>>>>>>> STEP: B7 导出 TFLite (fp32) <<<<<<<<<<<<
+  尝试 litert_torch
+  ★★ 导出成功 268.1 MB  7s
 
+>>>>>>>>>>>> STEP: B8 审计 <<<<<<<<<<<<
+  --- 审计 dit_block0_1024_fp32.tflite (268.08 MB) ---
+  subgraph0 tensors=235 秩直方图={3: 69, 2: 41, 1: 46, 0: 7, 4: 66, 5: 6}
+    张量类型: {'FLOAT32': 207, 'INT32': 28}
+    IN [0] [1,4096,2048]FLOAT32
+    IN [1] [1,256,1024]FLOAT32
+    IN [2] [1,2048]FLOAT32
+    IN [3] [1,6144]FLOAT32
+    OUT[0] [1,4096,2048]FLOAT32
+    5D+ 张量个数 = 6
+       [1, 16, 4096, 2, 64]
+       [1, 16, 4096, 1, 64]
+       [1, 16, 4096, 1, 64]
+       [1, 16, 4096, 2, 64]
+       [1, 16, 4096, 1, 64]
+       [1, 16, 4096, 1, 64]
+  --- 算子表 ---
+    MUL                        x 39
+    RESHAPE                    x 39
+    TANH                       x 24
+    FULLY_CONNECTED            x 16
+    SELECT                     x 13
+    TRANSPOSE                  x 10
+    SQRT                       x 7
+    MEAN                       x 6
+    LOG                        x 4
+    SEGMENT_SUM                x 4
+    LEAKY_RELU                 x 3
+    SUB                        x 3
+    CONCATENATION              x 2
+    SOFTMAX                    x 2
+    LOGISTIC                   x 1
+    RANDOM_UNIFORM             x 1
+  >>> 最大秩=5  全<=4D:False  图IO全<=4D:True
+
+>>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
+  --- out/ ---
+      57352508  block.tflite
+           437  block_ops.txt
+       7868612  block_ref.npz
+            57  diag.txt
+      72386208  dit_block_ref.npz
+          3640  export_log.txt
+             0  fault.txt
+             6  step.txt
+        786560  vae_out.npy
+        786560  vae_out_ref.npy
+         65664  vae_z.npy
+         65664  vae_z4.npy
+         65664  vae_z5.npy
+  --- model/ ---
+     281097864  dit_block0_1024_fp32.tflite
+
+================ P1 结果汇总 ================
+  block 参数量    : 69206528 (264.0 MB fp32)
+  单片 FLOPs      : attn1 274.9 + attn2 214.7 + ff 274.9 = 764.5 GFLOPs
+  28 层一次前向   : 21.41 TFLOPs   （4 步无CFG=85.6 TFLOPs）
+  返回结构        : tensor (1, 4096, 2048)
+  TFLite 导出     : PASS
+  全图 <= 4D      : FAIL
+============================================
