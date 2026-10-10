@@ -79,3 +79,4 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   patch_embed    PASS
   time_embed     PASS
   head           PASS
+  git push rc=0
