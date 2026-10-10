@@ -1,41 +1,19 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
 
->>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
+>>>>>>>>>>>> R0 transforms shim <<<<<<<<<<<<
 
->>>>>>>>>>>> B1 建 1 层 + 读 block[0] 权重 <<<<<<<<<<<<
-  hidden=2048  heads=16  head_dim=128  half=64
+>>>>>>>>>>>> R1 建 1 层模型 + 读全部权重（含 patch_embed / time_embed / rope） <<<<<<<<<<<<
+  取到 24 个张量（block0 + patch_embed + time_embed）
+  load_state_dict: missing=3 unexpected=0
 
->>>>>>>>>>>> B2 造输入 + rope（先算原版函数的参考输出） <<<<<<<<<<<<
-  rope cos(4096, 128) sin(4096, 128)
+>>>>>>>>>>>> R2 造【真实分布】的输入 <<<<<<<<<<<<
 
->>>>>>>>>>>> B3 原版 block 参考输出（后面端到端比对用） <<<<<<<<<<<<
-  原版输出 (1, 4096, 2048)   absmax=448.9479
-  norm_q.eps=1.00e-05  norm_k.eps=1.00e-05  gamma(128,)
+!!!!!! 顶层异常: RuntimeError Tensors must have same number of dimensions: got 5 and 4
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 285, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 96, in main
+    hs5 = torch.cat([latent, pm], dim=1) if cfg.get("concat_padding_mask") else latent
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Tensors must have same number of dimensions: got 5 and 4
 
->>>>>>>>>>>> 检查A  F.linear(h, W_q2) 是否等于 rot(to_q(h)) <<<<<<<<<<<<
-  最大绝对误差 0.000e+00   参考绝对值最大 3.331   相对 0.00e+00
-  => PASS
-
->>>>>>>>>>>> 检查B  qr*sc*rot_gamma 是否等于 rot(norm_q(q)) <<<<<<<<<<<<
-  最大绝对误差 0.000e+00   参考绝对值最大 4.380   相对 0.00e+00
-  => PASS
-
-  dispatch_attention_fn 可用: True
-  FF: fc1 2048->8192  fc2 8192->2048  拆 8 链
-  原模块 = GELU(net.0)   近似模式 = 'none'  ->  重建为 nn.GELU(approximate='none')
-  blk.ff 叶子模块: [('net', 'ModuleList'), ('net.0', 'GELU'), ('net.0.proj', 'Linear'), ('net.1', 'Dropout'), ('net.2', 'Linear')]
-
->>>>>>>>>>>> 检查C  优化版 block 输出 vs 原版 block 输出 <<<<<<<<<<<<
-  最大绝对误差 2.441e-04   平均 2.201e-06   参考绝对值最大 448.948   相对 5.438e-07
-  => PASS
-  opt 参数量 = 69206528   (原版 block = 69206528)
-
->>>>>>>>>>>> B5 导出 <<<<<<<<<<<<
-  blk_opt fp32 300.1 MB
-  ★ blk_opt int8 75.8 MB
-
->>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  检查A 权重折叠   : PASS
-  检查B 归一化+RoPE: PASS
-  检查C 端到端等价 : PASS
-  blk_opt int8 75.8 MB
