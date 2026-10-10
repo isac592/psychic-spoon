@@ -1,4 +1,4 @@
-try https://paste.rs/U8Zwk
-got 13996 bytes
+try https://paste.rs/mfeWv
+got 5902 bytes
 verified
 OK=1
