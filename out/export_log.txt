@@ -70,3 +70,6 @@ Traceback (most recent call last):
            ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
 RuntimeError: The size of tensor a (384) must match the size of tensor b (192) at non-singleton dimension 0
 
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   f7febfb..a271523  main -> main
+
