@@ -13,18 +13,19 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> STEP: A3 打 4D 补丁（4 个模块假设了 5D） <<<<<<<<<<<<
   已打 4 个补丁: CausalConv3d / Resample / AttentionBlock / RMS_norm
+  已挂 15 个形状不变式钩子（resnet/attention 进出形状必须一致，防止静默广播）
 
 >>>>>>>>>>>> STEP: A4 数值比对 5D 原版 vs 4D 新版 <<<<<<<<<<<<
     [decoder] in  (1, 16, 32, 32)
-    [mid_block] (1, 384, 32, 32) -> (384, 384, 32, 32)
-    [up_block 0] (384, 384, 32, 32) -> (384, 192, 64, 64)
-  !! RMS_norm 形状不匹配: x=(384, 192, 64, 64) gamma=(192, 1, 1, 1) bias=0.0 channel_first=True
+    [mid_block] (1, 384, 32, 32) -> (1, 384, 32, 32)
+    [up_block 0] (1, 384, 32, 32) -> (1, 192, 64, 64)
+  !! QwenImageResidualBlock 形状变了: (1, 192, 64, 64) -> (1, 384, 64, 64)
 
-!!!!!! 顶层异常: RuntimeError The size of tensor a (384) must match the size of tensor b (192) at non-singleton dimension 0
+!!!!!! 顶层异常: AssertionError QwenImageResidualBlock 形状不变式被破坏
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 357, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 379, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 296, in main
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 317, in main
     new = dec4(z4)
           ^^^^^^^^
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
@@ -33,7 +34,7 @@ Traceback (most recent call last):
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 284, in forward
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 292, in forward
     return torch.clamp(self.decoder(x), -1.0, 1.0)
                        ^^^^^^^^^^^^^^^
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
@@ -42,7 +43,7 @@ Traceback (most recent call last):
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 265, in dec_traced
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 273, in dec_traced
     y = _orig_dec_fwd(self, x, feat_cache, feat_idx)
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 654, in forward
@@ -63,23 +64,13 @@ Traceback (most recent call last):
   File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 256, in forward
-    x = self.norm1(x)
-        ^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 247, in rms_4d
-    out = normalized * self.scale * g
-          ~~~~~~~~~~~~~~~~~~~~~~~~^~~
-RuntimeError: The size of tensor a (384) must match the size of tensor b (192) at non-singleton dimension 0
-
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   c79cbd1..7185d55  main -> main
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1884, in _call_impl
+    return inner()
+           ^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1845, in inner
+    hook_result = hook(self, args, result)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 307, in _h
+    raise AssertionError("%s 形状不变式被破坏" % tag)
+AssertionError: QwenImageResidualBlock 形状不变式被破坏
 
