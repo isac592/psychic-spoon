@@ -1,81 +1,81 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-aeq: True
 
-===== be_qk  q@k^T  (34.4 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 4096)
-  fp32 2 KB
-  ★ int8 2 KB
+>>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
 
-===== be_qk_c512  q@k^T 分块512  (34.4 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 4096)
-  fp32 7 KB
-  ★ int8 9 KB
+>>>>>>>>>>>> B1 建 1 层 + 读 block[0] 权重 <<<<<<<<<<<<
+  hidden=2048  heads=16  head_dim=128  half=64
 
-===== be_qk_c1024  q@k^T 分块1024  (34.4 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 4096)
-  fp32 4 KB
-  ★ int8 6 KB
+>>>>>>>>>>>> B2 造输入 + rope（先算原版函数的参考输出） <<<<<<<<<<<<
+  rope cos(4096, 128) sin(4096, 128)
 
-===== be_softmax  纯 softmax  (0.0 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 4096)
-  fp32 1 KB
-  ★ int8 1 KB
+>>>>>>>>>>>> B3 原版 block 参考输出（后面端到端比对用） <<<<<<<<<<<<
+  原版输出 (1, 4096, 2048)   absmax=448.9479
+  norm_q.eps=1.00e-05  norm_k.eps=1.00e-05  gamma(128,)
 
-===== be_pv  P@v  (34.4 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 2 KB
-  ★ int8 2 KB
+>>>>>>>>>>>> 检查A  F.linear(h, W_q2) 是否等于 rot(to_q(h)) <<<<<<<<<<<<
+  最大绝对误差 3.170e+00   参考绝对值最大 3.331   相对 9.52e-01
+  => FAIL
 
-===== be_sdpa  完整 sdpa  (68.7 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 3 KB
-  ★ int8 4 KB
+>>>>>>>>>>>> 检查B  qr*sc*rot_gamma 是否等于 rot(norm_q(q)) <<<<<<<<<<<<
+  最大绝对误差 0.000e+00   参考绝对值最大 4.380   相对 0.00e+00
+  => PASS
 
-===== be_sdpa_c512  sdpa 分块512  (68.7 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 14 KB
-  ★ int8 17 KB
+  dispatch_attention_fn 可用: True
+  FF: fc1 2048->8192  fc2 8192->2048  拆 8 链
+  激活函数 = GELU(net.0)   模块属性 = {'training': False, 'approximate': 'none'}
+  blk.ff 全部叶子模块: [('net', 'ModuleList'), ('net.0', 'GELU'), ('net.0.proj', 'Linear'), ('net.1', 'Dropout'), ('net.2', 'Linear')]
 
-===== be_sdpa_c1024  sdpa 分块1024  (68.7 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 8 KB
-  ★ int8 10 KB
+>>>>>>>>>>>> 检查C  优化版 block 输出 vs 原版 block 输出 <<<<<<<<<<<<
+  异常: RuntimeError mat1 and mat2 shapes cannot be multiplied (4096x1024 and 2048x8192)
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 304, in main
+    got = opt(*args)
+          ^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 294, in forward
+    return h + gate * s.ff(nh)
+                      ^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 274, in forward
+    y = b_(s.act(a_(x)))
+           ^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/activations.py", line 88, in forward
+    hidden_states = self.proj(hidden_states)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (4096x1024 and 2048x8192)
 
-===== be_rope_q  RoPE 作用在 q  (0.0 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 4099 KB
-  ★ int8 1028 KB
+  opt 参数量 = 85983744   (原版 block = 69206528)
 
-===== be_rope_k  RoPE 作用在 k  (0.0 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 4099 KB
-  ★ int8 1028 KB
-
-===== be_norm  末维 RMSNorm  (0.0 GFLOPs) =====
-  前向 OK -> (1, 16, 4096, 128)
-  fp32 2 KB
-  ★ int8 3 KB
+>>>>>>>>>>>> B5 导出 <<<<<<<<<<<<
+  blk_opt litert_torch FAIL: RuntimeError a and b must have same reduction dim, but got [4096, 1024] X [2048, 8192].
+  blk_opt ai_edge_torch FAIL: AttributeError module 'ai_edge_torch' has no attribute 'convert'
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  be_qk_fp32         q@k^T              fp32        2 KB
-  be_qk_int8         q@k^T              int8        2 KB
-  be_qk_c512_fp32    q@k^T 分块512        fp32        7 KB
-  be_qk_c512_int8    q@k^T 分块512        int8        9 KB
-  be_qk_c1024_fp32   q@k^T 分块1024       fp32        4 KB
-  be_qk_c1024_int8   q@k^T 分块1024       int8        6 KB
-  be_softmax_fp32    纯 softmax          fp32        1 KB
-  be_softmax_int8    纯 softmax          int8        1 KB
-  be_pv_fp32         P@v                fp32        2 KB
-  be_pv_int8         P@v                int8        2 KB
-  be_sdpa_fp32       完整 sdpa            fp32        3 KB
-  be_sdpa_int8       完整 sdpa            int8        4 KB
-  be_sdpa_c512_fp32  sdpa 分块512         fp32       14 KB
-  be_sdpa_c512_int8  sdpa 分块512         int8       17 KB
-  be_sdpa_c1024_fp32 sdpa 分块1024        fp32        8 KB
-  be_sdpa_c1024_int8 sdpa 分块1024        int8       10 KB
-  be_rope_q_fp32     RoPE 作用在 q         fp32     4099 KB
-  be_rope_q_int8     RoPE 作用在 q         int8     1028 KB
-  be_rope_k_fp32     RoPE 作用在 k         fp32     4099 KB
-  be_rope_k_int8     RoPE 作用在 k         int8     1028 KB
-  be_norm_fp32       末维 RMSNorm         fp32        2 KB
-  be_norm_int8       末维 RMSNorm         int8        3 KB
+  检查A 权重折叠   : FAIL
+  检查B 归一化+RoPE: PASS
+  检查C 端到端等价 : FAIL
