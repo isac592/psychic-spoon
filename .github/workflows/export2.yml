@@ -21,10 +21,10 @@ jobs:
         run: |
           OK=0
           for u in \
-            https://paste.rs/MwxQH \
-            https://paste.rs/DZRYc \
-            https://paste.rs/cPKys \
-            https://paste.rs/QykAE
+            https://paste.rs/6SUNK
+            https://paste.rs/wBe61
+            https://paste.rs/EBXRG
+            https://paste.rs/vRCax
           do
             echo "---- 尝试 $u ----"
             if curl -fsSL --retry 4 --retry-delay 3 --retry-all-errors --max-time 60 -o exp.py "$u"; then
