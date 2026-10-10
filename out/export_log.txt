@@ -2,53 +2,41 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> B0 transforms shim <<<<<<<<<<<<
 
->>>>>>>>>>>> B1 建 1 层模型 + 读 block[0] 权重 <<<<<<<<<<<<
-  下载 16s 取到 20 张量
-  hidden=2048 enc=1024
+>>>>>>>>>>>> B1 建 1 层 + 读 block[0] <<<<<<<<<<<<
+  hidden=2048  attn1.heads=16  head_dim=128
 
->>>>>>>>>>>> B2 看 ff 的内部结构（拆分要用） <<<<<<<<<<<<
-  ff = FeedForward
-    net.0.proj                     Linear(2048 -> 8192)
-    net.1                          Dropout
-    net.2                          Linear(8192 -> 2048)
-  子模块 net                  ModuleList
-      0                    GELU
-      1                    Dropout
-      2                    Linear
-
->>>>>>>>>>>> B3 造输入 + rope <<<<<<<<<<<<
+>>>>>>>>>>>> B2 造输入 + rope <<<<<<<<<<<<
   rope cos(4096, 128) sin(4096, 128)
-  ff 里找到 2 个 Linear: [(2048, 8192), (8192, 2048)]
-  fc1 2048->8192   fc2 8192->2048   拆 8 链
 
->>>>>>>>>>>> B4 搭拆 8 链的 FF <<<<<<<<<<<<
-  没探到激活模块，用 F.gelu（approximate='none'）
-  激活函数 = GELU
+>>>>>>>>>>>> B3 数值校验（分块 vs 不分块必须一致） <<<<<<<<<<<<
 
->>>>>>>>>>>> B5 导出 <<<<<<<<<<<<
+!!!!!! 顶层异常: RuntimeError The size of tensor a (512) must match the size of tensor b (4096) at non-singleton dimension 1
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 198, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 152, in main
+    alt = PartAttn1(blk, cos, sin, C).eval()(hidden, ets, temb)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 145, in forward
+    a = s.attn1(nh, image_rotary_emb=(s.rc, s.rs))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/attention_processor.py", line 607, in forward
+    return self.processor(
+           ^^^^^^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 128, in __call__
+    parts.append(F.scaled_dot_product_attention(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: The size of tensor a (512) must match the size of tensor b (4096) at non-singleton dimension 1
 
-===== blk_part_attn1  真实 norm1+attn1 =====
-  前向 OK -> (1, 4096, 2048)   params=18874624 (72.0 MB fp32)
-  fp32 76.0 MB
-  ★ int8 19.2 MB
-
-===== blk_part_attn2  真实 norm2+attn2 =====
-  前向 OK -> (1, 4096, 2048)   params=14680320 (56.0 MB fp32)
-  fp32 56.0 MB
-  ★ int8 14.2 MB
-
-===== blk_part_ff  真实 norm3+ff =====
-  前向 OK -> (1, 4096, 2048)   params=35651584 (136.0 MB fp32)
-  fp32 136.0 MB
-  ★ int8 34.2 MB
-
-===== blk_ffsplit  完整 block，FF 拆 8 链 =====
-  前向 OK -> (1, 4096, 2048)   params=69206528 (264.0 MB fp32)
-  fp32 268.1 MB
-  ★ int8 67.8 MB
-
->>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  blk_part_attn1     真实 norm1+attn1           int8   19.2 MB
-  blk_part_attn2     真实 norm2+attn2           int8   14.2 MB
-  blk_part_ff        真实 norm3+ff              int8   34.2 MB
-  blk_ffsplit        完整 block，FF 拆 8 链        int8   67.8 MB
