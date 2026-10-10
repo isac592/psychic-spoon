@@ -13,8 +13,8 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   norm_q.eps=1.00e-05  norm_k.eps=1.00e-05  gamma(128,)
 
 >>>>>>>>>>>> 检查A  F.linear(h, W_q2) 是否等于 rot(to_q(h)) <<<<<<<<<<<<
-  最大绝对误差 3.170e+00   参考绝对值最大 3.331   相对 9.52e-01
-  => FAIL
+  最大绝对误差 0.000e+00   参考绝对值最大 3.331   相对 0.00e+00
+  => PASS
 
 >>>>>>>>>>>> 检查B  qr*sc*rot_gamma 是否等于 rot(norm_q(q)) <<<<<<<<<<<<
   最大绝对误差 0.000e+00   参考绝对值最大 4.380   相对 0.00e+00
@@ -22,60 +22,20 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
   dispatch_attention_fn 可用: True
   FF: fc1 2048->8192  fc2 8192->2048  拆 8 链
-  激活函数 = GELU(net.0)   模块属性 = {'training': False, 'approximate': 'none'}
-  blk.ff 全部叶子模块: [('net', 'ModuleList'), ('net.0', 'GELU'), ('net.0.proj', 'Linear'), ('net.1', 'Dropout'), ('net.2', 'Linear')]
+  原模块 = GELU(net.0)   近似模式 = 'none'  ->  重建为 nn.GELU(approximate='none')
+  blk.ff 叶子模块: [('net', 'ModuleList'), ('net.0', 'GELU'), ('net.0.proj', 'Linear'), ('net.1', 'Dropout'), ('net.2', 'Linear')]
 
 >>>>>>>>>>>> 检查C  优化版 block 输出 vs 原版 block 输出 <<<<<<<<<<<<
-  异常: RuntimeError mat1 and mat2 shapes cannot be multiplied (4096x1024 and 2048x8192)
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 304, in main
-    got = opt(*args)
-          ^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 294, in forward
-    return h + gate * s.ff(nh)
-                      ^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 274, in forward
-    y = b_(s.act(a_(x)))
-           ^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/activations.py", line 88, in forward
-    hidden_states = self.proj(hidden_states)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/linear.py", line 134, in forward
-    return F.linear(input, self.weight, self.bias)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: mat1 and mat2 shapes cannot be multiplied (4096x1024 and 2048x8192)
-
-  opt 参数量 = 85983744   (原版 block = 69206528)
+  最大绝对误差 2.441e-04   平均 2.201e-06   参考绝对值最大 448.948   相对 5.438e-07
+  => PASS
+  opt 参数量 = 69206528   (原版 block = 69206528)
 
 >>>>>>>>>>>> B5 导出 <<<<<<<<<<<<
-  blk_opt litert_torch FAIL: RuntimeError a and b must have same reduction dim, but got [4096, 1024] X [2048, 8192].
-  blk_opt ai_edge_torch FAIL: AttributeError module 'ai_edge_torch' has no attribute 'convert'
+  blk_opt fp32 300.1 MB
+  ★ blk_opt int8 75.8 MB
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  检查A 权重折叠   : FAIL
+  检查A 权重折叠   : PASS
   检查B 归一化+RoPE: PASS
-  检查C 端到端等价 : FAIL
+  检查C 端到端等价 : PASS
+  blk_opt int8 75.8 MB
