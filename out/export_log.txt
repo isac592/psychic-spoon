@@ -113,3 +113,8 @@ python 3.11.17 | torch 2.13.0+cu130 | diffusers 0.41.0
   TFLite 导出     : PASS
   全图 <= 4D      : FAIL
 ============================================
+git push rc=0 pz is 69.03 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
+remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
+To https://github.com/isac592/psychic-spoon
+   417fa05..b0a4b5c  main -> main
+
