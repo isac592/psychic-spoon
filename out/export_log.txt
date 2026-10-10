@@ -110,3 +110,6 @@ KeyError: 'args_0'
   fp32 导出        : PASS
   dynamic_wi8_afp32  : PASS
 ==============================================
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   520eaa6..c8731cb  main -> main
+
