@@ -1,0 +1,21 @@
+name: Export MiniT2I
+on: workflow_dispatch
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install numpy transformers diffusers safetensors huggingface_hub
+          pip install ai-edge-torch || true
+          python export_minit2i_block.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minit2i-p0-result
+          path: out/
