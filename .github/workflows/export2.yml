@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p out
           : > out/diag.txt
-          URLS="https://paste.rs/98w3u https://paste.rs/lXFzj https://paste.rs/nrPOX"
+          URLS="https://paste.rs/eLNo9 https://paste.rs/ByCrD https://paste.rs/DQGXb"
           OK=0
           for u in $URLS; do
             echo "try $u" >> out/diag.txt
