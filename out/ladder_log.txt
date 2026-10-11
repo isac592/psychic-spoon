@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0] chunk=512 FF拆16  配方 ['ai8', 'ai16']  模型形态 plain/smooth(attn1 平滑, α=0.50)
+配置: 块[0] chunk=512 FF拆16  配方 ['ai8_c100', 'ai8_c050', 'ai8_c025', 'ai8_c012', 'ai16_c100', 'ai16_c025']  模型形态 plain/smooth(attn1 平滑, α=0.50)
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -10,12 +10,16 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
   ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ ai8 = static_wi8_ai8
-  ✓ ai16 = static_wi8_ai16
-  ★ 变体共 2 个
+  ✓ ai8_c100 = static_wi8_ai8   截断系数 f=1.000（对照组，应复现基线）
+  ✓ ai8_c050 = static_wi8_ai8   截断系数 f=0.500
+  ✓ ai8_c025 = static_wi8_ai8   截断系数 f=0.250
+  ✓ ai8_c012 = static_wi8_ai8   截断系数 f=0.125
+  ✓ ai16_c100 = static_wi8_ai16   截断系数 f=1.000（对照组，应复现基线）
+  ✓ ai16_c025 = static_wi8_ai16   截断系数 f=0.250
+  ★ 变体共 6 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 14s  1 分片
+  权重下载 18s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -23,16 +27,25 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
 
->>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 2 个变体） <<<<<<<<<<<<
+>>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 6 个变体） <<<<<<<<<<<<
 
   ── block 0 ──
   等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ 平滑系数 s: min=0.3139  中位=7.2098  max=58.9609  极差=187.8×   (α=0.50, 范围只平滑 q/k/v/Wq2/Wk2)
-  ★ 平滑版等价性 2.76e-07 OK   （平滑是精确等价的，必须同样精确）
-  ★ ai8                        76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ ai16                       77.04 MB  I/O=I16/I16/I16/I16->I16
-  ★ ai8                        76.04 MB  I/O=I8/I8/I8/I8->I8
-  ★ ai16                       77.04 MB  I/O=I16/I16/I16/I16->I16
+  [ai8_c100] 对照组 f=1.0（收窄 1.0 倍=原样），扫到 315 个逐张量张量
+     标定项样例: __main__.main.<locals>.build_opt.<locals: min(1,)/float64 max(1,)/float64
+     标定项样例: __main__.main.<locals>.build_opt.<locals: min(1,)/float64 max(1,)/float64
+     标定项样例: __main__.main.<locals>.build_opt.<locals: min(1,)/float64 max(1,)/float64
+  ★ ai8_c100                   76.03 MB  I/O=I8/I8/I8/I8->I8
+  [ai8_c050] 截断 f=0.500 改了 315 个逐张量张量
+  ★ ai8_c050                   76.03 MB  I/O=I8/I8/I8/I8->I8
+  [ai8_c025] 截断 f=0.250 改了 315 个逐张量张量
+  ★ ai8_c025                   76.03 MB  I/O=I8/I8/I8/I8->I8
+  [ai8_c012] 截断 f=0.125 改了 315 个逐张量张量
+  ★ ai8_c012                   76.03 MB  I/O=I8/I8/I8/I8->I8
+  [ai16_c100] 对照组 f=1.0（收窄 1.0 倍=原样），扫到 315 个逐张量张量
+  ★ ai16_c100                  77.04 MB  I/O=I16/I16/I16/I16->I16
+  [ai16_c025] 截断 f=0.250 改了 315 个逐张量张量
+  ★ ai16_c025                  77.04 MB  I/O=I16/I16/I16/I16->I16
 
 >>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
   ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
@@ -40,5 +53,4 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
   块 [0]   chunk=512 FF拆16
-  导出成功 4 个模型
-  git push rc=0
+  导出成功 6 个模型
