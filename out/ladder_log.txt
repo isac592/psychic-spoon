@@ -39,3 +39,4 @@ Traceback (most recent call last):
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 RuntimeError: 平滑版等价性超差，实现有误
 
+  git push rc=0
