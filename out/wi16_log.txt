@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0, 1] chunk=512 FF拆16 wi8_ai8/wi8_ai16/weightonly_wi8/dyn_wi8/nonormq_ai8/hr_ai8
+配置: 块[0, 1] chunk=512 FF拆16 wi8_ai8/wi8_ai16/normfp32_ai8/normfp32_ai16
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -9,8 +9,9 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ TensorDataType (2 项): ['INT', 'FLOAT']
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
-  ✗ CUSTOM_NORM_FP32 构造失败: AttributeError module 'ai_edge_quantizer.qtyping' has no attribute 'AlgorithmName'
-  ✗ CUSTOM_HADAMARD 构造失败: AttributeError module 'ai_edge_quantizer.qtyping' has no attribute 'AlgorithmName'
+  ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
+  ✓ CUSTOM_NORM_FP32_AI8 = static_wi8_ai8 + NO_QUANTIZE(scope ~ .*RMSNormScope.*)
+  ✓ CUSTOM_NORM_FP32_AI16 = static_wi8_ai16 + NO_QUANTIZE(scope ~ .*RMSNormScope.*)
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
   权重下载 16s  1 分片
@@ -26,21 +27,21 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ── block 0 ──
   等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
   [blk0_wi8_ai8_c512f16] 配方内容: [{'regex': '.*', 'operation': <TFLOperationName.ALL_SUPPORTED: '*'>, 'algorithm_key': <AlgorithmName.MIN_MAX_UNIFORM_QUANT: 'min_max_uniform_quantize'>, 'op_config': {'activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.TENSORWISE: 'TENSORWISE'>, 'dtype': <TensorDataType.INT: 'INT'>}, 'weight_tensor_config': {'num_bits': 8, 'symmetric': True, 'granularity': <QuantGranularity.CHANNELWISE: 'CHANNELWISE'>, 'dtype': <TensorDataType.INT: 'INT'>}, 'compute_precision': <ComputePrecision.INTEGER: 'INTEGER'>, 'explicit_dequantize': False, 'skip_checks': False, 'min_weight_elements': 0}}]
-  ★ blk0_wi8_ai8_c512f16         76.03 MB  (已标定)
-  ★ blk0_wi8_ai16_c512f16        77.03 MB  (已标定)
-  ✗ blk0_weightonly_wi8_c512f16 失败: ValueError Failed to load/resolve recipe "weightonly_wi8_afp32".
-  ★ blk0_dyn_wi8_c512f16         79.02 MB  (已标定)
-  ✗ blk0_nonormq_ai8_c512f16 自定义配方没构造成功，跳过
-  ✗ blk0_hr_ai8_c512f16 自定义配方没构造成功，跳过
+  ★ blk0_wi8_ai8_c512f16         76.03 MB  (已标定) scope名在模型里=是
+  ★ blk0_wi8_ai16_c512f16        77.03 MB  (已标定) scope名在模型里=是
+  [blk0_normfp32_ai8_c512f16] 自定义配方 CUSTOM_NORM_FP32_AI8
+  ★ blk0_normfp32_ai8_c512f16    76.03 MB  (已标定) scope名在模型里=是
+  [blk0_normfp32_ai16_c512f16] 自定义配方 CUSTOM_NORM_FP32_AI16
+  ★ blk0_normfp32_ai16_c512f16   77.03 MB  (已标定) scope名在模型里=是
 
   ── block 1 ──
   等价性 2.99e-07 OK   输入 std=1.7455  输出 std=292.4155  |max|=6536.6
-  ★ blk1_wi8_ai8_c512f16         76.03 MB  (已标定)
-  ★ blk1_wi8_ai16_c512f16        77.03 MB  (已标定)
-  ✗ blk1_weightonly_wi8_c512f16 失败: ValueError Failed to load/resolve recipe "weightonly_wi8_afp32".
-  ★ blk1_dyn_wi8_c512f16         79.02 MB  (已标定)
-  ✗ blk1_nonormq_ai8_c512f16 自定义配方没构造成功，跳过
-  ✗ blk1_hr_ai8_c512f16 自定义配方没构造成功，跳过
+  ★ blk1_wi8_ai8_c512f16         76.03 MB  (已标定) scope名在模型里=是
+  ★ blk1_wi8_ai16_c512f16        77.03 MB  (已标定) scope名在模型里=是
+  [blk1_normfp32_ai8_c512f16] 自定义配方 CUSTOM_NORM_FP32_AI8
+  ★ blk1_normfp32_ai8_c512f16    76.03 MB  (已标定) scope名在模型里=是
+  [blk1_normfp32_ai16_c512f16] 自定义配方 CUSTOM_NORM_FP32_AI16
+  ★ blk1_normfp32_ai16_c512f16   77.03 MB  (已标定) scope名在模型里=是
 
 >>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
   ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
@@ -48,5 +49,4 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
   块 [0, 1]   chunk=512 FF拆16
-  导出成功 6 个模型
-  git push rc=0
+  导出成功 8 个模型
