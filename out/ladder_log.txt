@@ -15,7 +15,7 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ 变体共 2 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 28s  1 分片
+  权重下载 14s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -27,16 +27,17 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
   ── block 0 ──
   等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ 平滑系数 s: min=0.1882  中位=6.6373  max=58.9609   (α=0.50)
-  ★ 平滑版等价性 6.66e+00 !!超差 —— 我实现错了   （平滑是精确等价的，必须同样精确）
+  ★ 平滑系数 s: min=0.3139  中位=7.2098  max=58.9609  极差=187.8×   (α=0.50, 范围只平滑 q/k/v/Wq2/Wk2)
+  ★ 平滑版等价性 2.76e-07 OK   （平滑是精确等价的，必须同样精确）
+  ★ ai8                        76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ ai16                       77.04 MB  I/O=I16/I16/I16/I16->I16
+  ★ ai8                        76.04 MB  I/O=I8/I8/I8/I8->I8
+  ★ ai16                       77.04 MB  I/O=I16/I16/I16/I16->I16
 
-!!!!!! 顶层异常: RuntimeError 平滑版等价性超差，实现有误
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 477, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 442, in main
-    if er>=1e-5: raise RuntimeError("平滑版等价性超差，实现有误")
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: 平滑版等价性超差，实现有误
+>>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
+  ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
+  保存参考失败: KeyError 'in_1'
 
-  git push rc=0
+>>>>>>>>>>>> 汇总 <<<<<<<<<<<<
+  块 [0]   chunk=512 FF拆16
+  导出成功 4 个模型
