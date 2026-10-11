@@ -10,11 +10,11 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
   ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ mix                      全局ai16 覆盖3条  regex键=['.*', '.*SplitFF_ff.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*']
+  ✓ ff16                     全局ai16 覆盖2条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*']
   ★ 变体共 1 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 14s  1 分片
+  权重下载 20s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -26,153 +26,153 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
   ── block 0 ──
   等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 1 ──
   等价性 2.99e-07 OK   输入 std=1.7455  输出 std=292.4155  |max|=6536.6
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 2 ──
   等价性 2.50e-07 OK   输入 std=292.4155  输出 std=315.3923  |max|=7820.6
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 3 ──
   等价性 6.20e-08 OK   输入 std=315.3923  输出 std=316.9449  |max|=7878.0
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 4 ──
   等价性 6.03e-08 OK   输入 std=316.9449  输出 std=319.4823  |max|=8095.1
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 5 ──
   等价性 5.87e-08 OK   输入 std=319.4823  输出 std=320.3353  |max|=8319.4
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 6 ──
   等价性 5.96e-08 OK   输入 std=320.3353  输出 std=318.1144  |max|=8190.8
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 7 ──
   等价性 1.17e-07 OK   输入 std=318.1144  输出 std=320.8351  |max|=8374.4
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 8 ──
   等价性 1.15e-07 OK   输入 std=320.8351  输出 std=321.2321  |max|=8456.9
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 9 ──
   等价性 1.32e-07 OK   输入 std=321.2321  输出 std=313.2712  |max|=7420.6
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 10 ──
   等价性 2.28e-07 OK   输入 std=313.2712  输出 std=310.9550  |max|=8553.4
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 11 ──
   等价性 2.75e-07 OK   输入 std=310.9550  输出 std=305.5588  |max|=8888.0
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 12 ──
   等价性 1.94e-07 OK   输入 std=305.5588  输出 std=316.2694  |max|=10042.9
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 13 ──
   等价性 1.51e-07 OK   输入 std=316.2694  输出 std=346.3361  |max|=12962.0
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 14 ──
   等价性 2.09e-07 OK   输入 std=346.3361  输出 std=368.1886  |max|=11658.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 15 ──
   等价性 1.67e-07 OK   输入 std=368.1886  输出 std=369.9603  |max|=11694.3
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 16 ──
   等价性 2.57e-07 OK   输入 std=369.9603  输出 std=376.9571  |max|=15180.4
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 17 ──
   等价性 3.18e-07 OK   输入 std=376.9571  输出 std=343.3903  |max|=12288.8
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 18 ──
   等价性 3.54e-07 OK   输入 std=343.3903  输出 std=338.0887  |max|=11030.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 19 ──
   等价性 4.68e-07 OK   输入 std=338.0887  输出 std=311.0566  |max|=7296.2
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 20 ──
   等价性 5.27e-07 OK   输入 std=311.0566  输出 std=308.0625  |max|=7415.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 21 ──
   等价性 1.52e-06 OK   输入 std=308.0625  输出 std=300.6812  |max|=6443.8
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 22 ──
   等价性 3.12e-07 OK   输入 std=300.6812  输出 std=338.8542  |max|=10937.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 23 ──
   等价性 5.19e-07 OK   输入 std=338.8542  输出 std=339.0230  |max|=9410.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 24 ──
   等价性 3.64e-07 OK   输入 std=339.0230  输出 std=353.1135  |max|=10716.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 25 ──
   等价性 5.28e-07 OK   输入 std=353.1135  输出 std=368.1843  |max|=11090.7
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 26 ──
   等价性 3.56e-07 OK   输入 std=368.1843  输出 std=403.2843  |max|=10982.6
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
   ── block 27 ──
   等价性 1.91e-07 OK   输入 std=403.2843  输出 std=1287.8743  |max|=40972.9
-  ★ mix                       168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
 
 >>>>>>>>>>>> A4.5 CI 内逐块精度自检（跑 tflite 比对 fp32 参考） <<<<<<<<<<<<
   解释器: ai_edge_litert.interpreter
 
   [1/2] 逐块独立误差（喂 fp32 参考输入，每块单独跑）
   块     独立误差        参考rms         饱和
-   0      0.974%    1.7455        1
-   1      0.714%    292.42        0
-   2      0.362%    315.39        0
-   3      0.196%    316.95        6
-   4      0.198%    319.48        9
-   5      0.224%    320.34        0
-   6      0.257%    318.12        1
-   7      0.351%    320.84        10
-   8      0.360%    321.24        20
-   9      0.335%    313.28        0
-  10      0.502%    310.98        0
-  11      0.572%    305.62        0
-  12      0.666%    316.37        0
-  13      0.983%    346.53        0
-  14      0.891%    368.46        0
-  15      0.851%    370.27        0
-  16      0.945%    377.29        0
-  17      1.611%    343.76        0
-  18      2.370%    338.61        0
-  19      2.641%    311.78        0
-  20      2.821%    308.86        0
-  21      4.734%    301.59        0
-  22      3.585%    340.17        0
-  23      6.116%    340.29        0
-  24      4.287%    354.03        0
-  25     10.394%    368.32        0
-  26     11.177%    403.36        0
-  27      1.666%    1288          0
-  ★ 逐块：测了 28/28 块，最差 11.177%
+   0      0.168%    1.7455        1
+   1      0.097%    292.42        0
+   2      0.055%    315.39        0
+   3      0.042%    316.95        6
+   4      0.037%    319.48        9
+   5      0.037%    320.34        0
+   6      0.040%    318.12        1
+   7      0.038%    320.84        10
+   8      0.040%    321.24        19
+   9      0.041%    313.28        0
+  10      0.057%    310.98        0
+  11      0.076%    305.62        0
+  12      0.086%    316.37        0
+  13      0.088%    346.53        0
+  14      0.080%    368.46        0
+  15      0.099%    370.27        0
+  16      0.097%    377.29        0
+  17      0.122%    343.76        0
+  18      0.124%    338.61        0
+  19      0.130%    311.78        0
+  20      0.159%    308.86        0
+  21      0.208%    301.59        0
+  22      0.177%    340.17        0
+  23      0.303%    340.29        0
+  24      0.250%    354.03        0
+  25      0.413%    368.32        0
+  26      0.644%    403.36        0
+  27      0.080%    1288          0
+  ★ 逐块：测了 28/28 块，最差 0.644%
 
   [2/2] 28 块串联（真实推理路径：块间走量化后的 int16）
-  ★★ 串联跑满 28 块，最终逐元素误差 10.736%   (末块参考 rms 1288)
+  ★★ 串联跑满 28 块，最终逐元素误差 1.246%   (末块参考 rms 1288)
 
 
 >>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
@@ -180,7 +180,18 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ ref_blk1.npz 66.0 MB  (输入 = block0 浮点输出, out = block1 浮点输出)
   ★ ref_chain.npz 66.0 MB  (初始输入 + 第 27 块浮点输出 = 28 块串联参考)
 
+>>>>>>>>>>>> A5.5 存手机出图需要的小文件（enc/ets/temb） <<<<<<<<<<<<
+  ★ meta.npz 2.03 MB  (enc/ets/temb，手机端出图直接读)
+
+>>>>>>>>>>>> A6 用真实 prompt 算文本 embedding（失败不影响导出） <<<<<<<<<<<<
+  读 model_index.json 失败: 404 Client Error. (Request ID: Root=1-6acbda3e-4052b6a66e407d0c07cfa54d;7d763455-c84e-4b7c-95f8-1775147f45dc)
+
+Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0-Diffuser
+  prompt = a highly detailed photograph of a red panda sitting on a mossy rock, morning light, sharp focus
+  文本编码失败（不影响导出）: RemoteEntryNotFoundError 404 Client Error. (Request ID: Root=1-6acbda3f-05d94fc92ad790e96be1bd73;52cc188a-3a55-479e-88b6-6e12e8147a88)
+
+Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0-Diffusers/resolve/073c3a9db359c31ad0e8aa268d15775473c2176c/model_index.json.
+
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  块 28 个 (0..27)   chunk=512 FF拆16  变体 ['mix']
+  块 28 个 (0..27)   chunk=512 FF拆16  变体 ['ff16']
   导出成功 28 个模型
-  git push rc=0
