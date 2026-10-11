@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0] chunk=512 FF拆16  位宽[16, 8]  关闭范围['none', 'noattn1', 'noattn2', 'noff', 'nonorm']
+配置: 块[0] chunk=512 FF拆16  全部 ai8  变体 ['a1_sm', 'a1_mm', 'a1_mul', 'a1_div', 'a1_fc', 'fconly']
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -10,17 +10,13 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
   ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ blk0_lad16_none = static_wi8_ai16
-  ✓ blk0_lad16_noattn1 = static_wi8_ai16 + NO_QUANTIZE(.*Attention_attn1.*)
-  ✓ blk0_lad16_noattn2 = static_wi8_ai16 + NO_QUANTIZE(.*Attention_attn2.*)
-  ✓ blk0_lad16_noff = static_wi8_ai16 + NO_QUANTIZE(.*SplitFF_ff.*)
-  ✓ blk0_lad16_nonorm = static_wi8_ai16 + NO_QUANTIZE(.*AdaLayerNormZero.*)
-  ✓ blk0_lad8_none = static_wi8_ai8
-  ✓ blk0_lad8_noattn1 = static_wi8_ai8 + NO_QUANTIZE(.*Attention_attn1.*)
-  ✓ blk0_lad8_noattn2 = static_wi8_ai8 + NO_QUANTIZE(.*Attention_attn2.*)
-  ✓ blk0_lad8_noff = static_wi8_ai8 + NO_QUANTIZE(.*SplitFF_ff.*)
-  ✓ blk0_lad8_nonorm = static_wi8_ai8 + NO_QUANTIZE(.*AdaLayerNormZero.*)
-  ★ 变体共 10 个
+  ✓ blk0_a1_sm = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 SOFTMAX)
+  ✓ blk0_a1_mm = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 BATCH_MATMUL)
+  ✓ blk0_a1_mul = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 MUL)
+  ✓ blk0_a1_div = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 DIV)
+  ✓ blk0_a1_fc = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 FULLY_CONNECTED)
+  ✓ blk0_fconly = 只量化 FULLY_CONNECTED + BATCH_MATMUL，其余全 fp32
+  ★ 变体共 6 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
   权重下载 15s  1 分片
@@ -31,20 +27,16 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
 
->>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 10 个变体） <<<<<<<<<<<<
+>>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 6 个变体） <<<<<<<<<<<<
 
   ── block 0 ──
   等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ blk0_lad16_none            77.03 MB  I/O=I16/I16/I16/I16->I16
-  ★ blk0_lad16_noattn1        150.88 MB  I/O=I16/I16/I16/I16->I16
-  ★ blk0_lad16_noattn2        112.93 MB  I/O=I16/I16/I16/I16->I16
-  ★ blk0_lad16_noff           172.56 MB  I/O=I16/I16/I16/I16->I16
-  ★ blk0_lad16_nonorm          94.81 MB  I/O=I16/I16/I16/I16->I16
-  ★ blk0_lad8_none             76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_lad8_noattn1         150.88 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_lad8_noattn2         111.93 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_lad8_noff            171.55 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_lad8_nonorm           93.81 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_sm                 76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_mm                 76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_mul                79.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_div                76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_fc                147.89 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_fconly                79.04 MB  I/O=F32/F32/F32/F32->F32   ★★ fp32 I/O，手机端跑不了
 
 >>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
   ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
@@ -52,5 +44,4 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
   块 [0]   chunk=512 FF拆16
-  导出成功 10 个模型
-  git push rc=0
+  导出成功 6 个模型
