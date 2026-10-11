@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0] chunk=512 FF拆16  全部 ai8  变体 ['a1_sm', 'a1_mm', 'a1_mul', 'a1_div', 'a1_fc', 'fconly']
+配置: 块[0] chunk=512 FF拆16  全部 ai8  激活粒度变体 ['g_tensor', 'g_ch', 'g_b64', 'g_b32', 'a1_ch', 'a1_b64']
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -10,16 +10,22 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
   ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ blk0_a1_sm = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 SOFTMAX)
-  ✓ blk0_a1_mm = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 BATCH_MATMUL)
-  ✓ blk0_a1_mul = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 MUL)
-  ✓ blk0_a1_div = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 DIV)
-  ✓ blk0_a1_fc = static_wi8_ai8 + NO_QUANTIZE(attn1 内的 FULLY_CONNECTED)
-  ✓ blk0_fconly = 只量化 FULLY_CONNECTED + BATCH_MATMUL，其余全 fp32
+  ✓ blk0_g_tensor = 对照组 激活 TENSORWISE（必须复现 46.08%）
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.TENSORWISE: 'TENSORWISE'>, 'dtype': <TensorDataType.IN
+  ✓ blk0_g_ch = 全图激活 CHANNELWISE
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.CHANNELWISE: 'CHANNELWISE'>, 'dtype': <TensorDataType.
+  ✓ blk0_g_b64 = 全图激活 BLOCKWISE_64
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.BLOCKWISE_64: 'BLOCKWISE_64'>, 'dtype': <TensorDataTyp
+  ✓ blk0_g_b32 = 全图激活 BLOCKWISE_32
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.BLOCKWISE_32: 'BLOCKWISE_32'>, 'dtype': <TensorDataTyp
+  ✓ blk0_a1_ch = 全局 TENSORWISE，仅 attn1 用 CHANNELWISE
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.TENSORWISE: 'TENSORWISE'>, 'dtype': <TensorDataType.IN
+  ✓ blk0_a1_b64 = 全局 TENSORWISE，仅 attn1 用 BLOCKWISE_64
+     实际配方: activation_tensor_config': {'num_bits': 8, 'symmetric': False, 'granularity': <QuantGranularity.TENSORWISE: 'TENSORWISE'>, 'dtype': <TensorDataType.IN
   ★ 变体共 6 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 15s  1 分片
+  权重下载 28s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -30,13 +36,13 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 6 个变体） <<<<<<<<<<<<
 
   ── block 0 ──
-  等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ blk0_a1_sm                 76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_a1_mm                 76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_a1_mul                79.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_a1_div                76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_a1_fc                147.89 MB  I/O=I8/I8/I8/I8->I8
-  ★ blk0_fconly                79.04 MB  I/O=F32/F32/F32/F32->F32   ★★ fp32 I/O，手机端跑不了
+  等价性 1.66e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
+  ★ blk0_g_tensor              76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_g_ch                 300.09 MB  I/O=F32/F32/F32/F32->F32   ★★ fp32 I/O，手机端跑不了
+  ★ blk0_g_b64                300.09 MB  I/O=F32/F32/F32/F32->F32   ★★ fp32 I/O，手机端跑不了
+  ★ blk0_g_b32                300.09 MB  I/O=F32/F32/F32/F32->F32   ★★ fp32 I/O，手机端跑不了
+  ★ blk0_a1_ch                 76.03 MB  I/O=I8/I8/I8/I8->I8
+  ★ blk0_a1_b64                76.03 MB  I/O=I8/I8/I8/I8->I8
 
 >>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
   ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
@@ -45,4 +51,3 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
   块 [0]   chunk=512 FF拆16
   导出成功 6 个模型
-  git push rc=0
