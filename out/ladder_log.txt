@@ -1,45 +1,11 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0] chunk=512 FF拆16  配方 ['ai8', 'ai16']  模型形态 plain/rot(ConvRot attn1, 分组256)
 
->>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
-  AlgorithmName: 不存在
-  ★ TFLOperationName (52 项): ['ALL_SUPPORTED', 'INPUT', 'OUTPUT', 'FULLY_CONNECTED', 'BATCH_MATMUL', 'DEPTHWISE_CONV_2D', 'CONV_2D', 'CONV_2D_TRANSPOSE', 'AVERAGE_POOL_2D', 'RESHAPE', 'CUSTOM_OP', 'EMBEDDING_LOOKUP', 'SOFTMAX', 'TANH', 'TRANSPOSE', 'GELU', 'ADD', 'SUB', 'MUL', 'MEAN', 'RSQRT', 'CONCATENATION', 'STRIDED_SLICE', 'SPLIT', 'LOGISTIC', 'SLICE', 'SUM', 'SELECT', 'SELECT_V2', 'DYNAMIC_UPDATE_SLICE', 'STABLEHLO_COMPOSITE', 'PAD', 'SQUARED_DIFFERENCE', 'MAX_POOL_2D', 'RESIZE_BILINEAR', 'RESIZE_NEAREST_NEIGHBOR', 'GATHER_ND', 'PACK', 'UNPACK', 'DIV', 'BROADCAST_TO', 'SQRT', 'GATHER', 'HARD_SWISH', 'MAXIMUM', 'PADV2', 'REDUCE_MIN', 'EQUAL', 'NOT_EQUAL', 'MIRROR_PAD', 'SPACE_TO_DEPTH', 'RELU']
-  ★ QuantGranularity (6 项): ['TENSORWISE', 'CHANNELWISE', 'BLOCKWISE_32', 'BLOCKWISE_64', 'BLOCKWISE_128', 'BLOCKWISE_256']
-  ★ ComputePrecision (2 项): ['INTEGER', 'FLOAT']
-  ★ TensorDataType (2 项): ['INT', 'FLOAT']
-  ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
-  ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
-  ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ ai8 = static_wi8_ai8
-  ✓ ai16 = static_wi8_ai16
-  ★ 变体共 2 个
-
->>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 18s  1 分片
-
->>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
-  extra_pos_embed_type = None
-  hidden (1, 4096, 2048) std=0.1080   enc (1, 512, 1024)   ets (1, 2048)   temb (1, 6144)
-
->>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
-
->>>>>>>>>>>> A4 量化阶梯导出（block [0]，共 2 个变体） <<<<<<<<<<<<
-
-  ── block 0 ──
-  等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ 旋转版等价性 4.42e-07 OK   （ConvRot 是正交变换，必须同样精确）
-  ★ ai8                        76.03 MB  I/O=I8/I8/I8/I8->I8
-  ★ ai16                       77.04 MB  I/O=I16/I16/I16/I16->I16
-  ★ ai8                        76.10 MB  I/O=I8/I8/I8/I8->I8
-  ★ ai16                       77.10 MB  I/O=I16/I16/I16/I16->I16
-
-!!!!!! 顶层异常: UnboundLocalError cannot access local variable 'OptBlock' where it is not associated with a value
+!!!!!! 顶层异常: NameError name 'BLOCKS' is not defined
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 461, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 469, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 431, in main
-    del opt,opt_rot,blk,SplitFF,OptBlock,build_opt
-                                ^^^^^^^^
-UnboundLocalError: cannot access local variable 'OptBlock' where it is not associated with a value
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 82, in main
+    list(BLOCKS),CHUNK,FF_PARTS,[x[0] for x in VARSPEC],SMOOTH_ALPHA))
+         ^^^^^^
+NameError: name 'BLOCKS' is not defined
 
-  git push rc=0
