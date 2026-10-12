@@ -1,36 +1,40 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
+config 关键项: in_channels=16 out_channels=16 patch_size=[1, 2, 2] text_embed_dim=1024
 
->>>>>>>>>>>> A1 建骨架 + 下载权重 <<<<<<<<<<<<
-  权重 567 个 key
+==== patch_embed 类型: CosmosPatchEmbed ====
+class CosmosPatchEmbed(nn.Module):
+    def __init__(
+        self, in_channels: int, out_channels: int, patch_size: tuple[int, int, int], bias: bool = True
+    ) -> None:
+        super().__init__()
+        self.patch_size = patch_size
 
->>>>>>>>>>>> A2 打 4D 补丁 <<<<<<<<<<<<
-  patch_embed 里打了 0 个 Conv3d -> 4D
+        self.proj = nn.Linear(in_channels * patch_size[0] * patch_size[1] * patch_size[2], out_channels, bias=bias)
 
-!!!!!! 顶层异常: ValueError not enough values to unpack (expected 5, got 4)
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        batch_size, num_channels, num_frames, height, width = hidden_states.shape
+        p_t, p_h, p_w = self.patch_size
+        hidden_states = hidden_states.reshape(
+            batch_size, num_channels, num_frames // p_t, p_t, height // p_h, p_h, width // p_w, p_w
+        )
+        hidden_states = hidden_states.permute(0, 2, 4, 6, 1, 3, 5, 7).flatten(4, 7)
+        hidden_states = self.proj(hidden_states)
+        return hidden_states
+
+---- 子模块 ----
+  (self)                         CosmosPatchEmbed
+  proj                           Linear
+!!!!!! 顶层异常: AttributeError 'CosmosTransformer3DModel' object has no attribute 'final_layer'
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 170, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 63, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 89, in main
-    y = PE4(model.patch_embed)(z)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 84, in forward
-    o = s.pe(x)
-        ^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/transformers/transformer_cosmos.py", line 45, in forward
-    batch_size, num_channels, num_frames, height, width = hidden_states.shape
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ValueError: not enough values to unpack (expected 5, got 4)
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 41, in main
+    log("\n==== final_layer 类型: %s ===="%type(model.final_layer).__name__)
+                                                ^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/modeling_utils.py", line 288, in __getattr__
+    return super().__getattr__(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1967, in __getattr__
+    raise AttributeError(
+AttributeError: 'CosmosTransformer3DModel' object has no attribute 'final_layer'
 
-  git push rc=0
