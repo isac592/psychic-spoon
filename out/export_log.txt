@@ -117,3 +117,4 @@ def dispatch_attention_fn(
   参考 norm_out->proj_out -> (1, 4096, 64)
   ★ 与参考最大相对误差 0.000e+00 OK
   ★ head_4d.tflite 6.51 MB
+  git push rc=0
