@@ -456,3 +456,6 @@ class AnimaTextConditioner(ModelMixin, ConfigMixin, PeftAdapterMixin):
   tc(h,ids,t5ids)      ✗ IndexError index out of range in self
   cond (1, 512, 1024) std=0.0560  uncond (1, 512, 1024) std=0.0614
   ★★ text.npz 4.00 MB —— 真实 prompt 的 cond/uncond embedding
+git push rc=0 To https://github.com/isac592/psychic-spoon
+   ab9b488..2dc4720  main -> main
+
