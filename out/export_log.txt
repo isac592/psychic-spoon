@@ -20,3 +20,4 @@ patch_size=(1,2,2) out=16
     -> permute(0,7,1,6,2,4,3,5) -> flatten(6,7)->flatten(4,5)->flatten(2,3)
     out[oc,h,w]  其中 h=gh*2+ph, w=gw*2+pw, GH=GW=64
     src 索引 = ((gh*64+gw)*64) + ((ph*2+pw)*16) + oc
+  git push rc=0
