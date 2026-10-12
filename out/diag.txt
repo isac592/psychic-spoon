@@ -1,4 +1,4 @@
-try https://dpaste.com/2MZY94EDM.txt
-got 42652 bytes
+try https://dpaste.com/8KHBXK427.txt
+got 8363 bytes
 verified
 OK=1
