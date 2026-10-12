@@ -1,35 +1,22 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
+patch_size=(1,2,2) out=16
 
->>>>>>>>>>>> A1 骨架 + 权重 <<<<<<<<<<<<
-  in_channels=16 out_channels=16 patch_size=[1, 2, 2]
-  权重 567 key
+>>>>>>>>>>>> A1 patch_proj（只导 patch_embed.proj 这个 Linear） <<<<<<<<<<<<
+  proj: in=68 out=2048
+  PProj (1, 4096, 68) -> (1, 4096, 2048)
+  ★ patch_proj.tflite 0.53 MB
 
->>>>>>>>>>>> A2 顶层子模块（找 head 的真名） <<<<<<<<<<<<
-  patch_embed                CosmosPatchEmbed
-  rope                       CosmosRotaryPosEmbed
-  time_embed                 CosmosEmbedding
-  transformer_blocks         ModuleList
-  norm_out                   CosmosAdaLayerNorm
-  proj_out                   Linear
+>>>>>>>>>>>> A2 head_core（只导 norm_out + proj_out，不含 unpatchify） <<<<<<<<<<<<
+  HCore (1, 4096, 2048) -> (1, 4096, 64)   (期望最后一维 = 16*2*2*1 = 64)
+  ★ head_core.tflite 6.51 MB
 
->>>>>>>>>>>> A3 patch_embed 4D 版 <<<<<<<<<<<<
-  patch_size=(1,2,2)  proj.in=68  proj.out=2048
-  PE4 前向 (1, 17, 128, 128) -> (1, 64, 64, 2048)
-  ★ patch_embed_4d.tflite 0.53 MB
-
->>>>>>>>>>>> A4 head 4D 版 <<<<<<<<<<<<
-  head 模块名 = proj_out  类型 = Linear
-    def forward(self, input: Tensor) -> Tensor:
-        """
-        Runs the forward pass.
-        """
-        return F.linear(input, self.weight, self.bias)
-
-    (self)                       Linear
-  head 前向失败: TypeError Linear.forward() takes 2 positional arguments but 4 were given
-
->>>>>>>>>>>> A5 动漫风提示词的文本 embedding <<<<<<<<<<<<
-  prompt = masterpiece, best quality, anime illustration, 1girl, silver long hair, red eyes, black school uniform, standing on a ro
-  cond (1, 512, 1024) std=0.0651  uncond (1, 512, 1024) std=0.0580
-  ★★ text.npz 4.00 MB
-  git push rc=0
+>>>>>>>>>>>> A3 把 JS 要用的维度重排公式打出来（从真实源码推） <<<<<<<<<<<<
+  patchify (T=1,pt=1):
+    src=(1,17,128,128) -> reshape(1,17,1,1,64,2,64,2) -> permute(0,2,4,6,1,3,5,7) -> flatten(4,7)
+    out[gh,gw,k]  k = c*4 + ph*2 + pw   ;  src 索引 = c*16384 + (gh*2+ph)*128 + (gw*2+pw)
+    展平后 N = gh*64+gw,  out[N*68 + k]
+  unpatchify:
+    x=(1,4096,64) -> unflatten(2,(ph,pw,pt,-1)) -> unflatten(1,(F,GH,GW))
+    -> permute(0,7,1,6,2,4,3,5) -> flatten(6,7)->flatten(4,5)->flatten(2,3)
+    out[oc,h,w]  其中 h=gh*2+ph, w=gw*2+pw, GH=GW=64
+    src 索引 = ((gh*64+gw)*64) + ((ph*2+pw)*16) + oc
