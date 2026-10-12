@@ -90,6 +90,47 @@ torch 2.13.0+cu130 | diffusers 0.41.0
         return x
 
   ---- 源码结束 ----
+  ---- QwenImageResample.forward 源码（p2/p3 的元凶就在这里）----
+    def resample_4d(self, x, feat_cache=None, feat_idx=[0]):
+        if feat_cache is not None:
+            raise RuntimeError("4D 路径只支持 decode(feat_cache=None)")
+        if x.dim() == 5:
+            assert x.shape[2] == 1, ("T != 1", tuple(x.shape))
+            x = x[:, :, 0]
+        return self.resample(x)
+
+  ---- 结束 ----
+  ---- QwenImageResample.__init__ 源码 ----
+    def __init__(self, dim: int, mode: str) -> None:
+        super().__init__()
+        self.dim = dim
+        self.mode = mode
+
+        # layers
+        if mode == "upsample2d":
+            self.resample = nn.Sequential(
+                QwenImageUpsample(scale_factor=(2.0, 2.0), mode="nearest-exact"),
+                nn.Conv2d(dim, dim // 2, 3, padding=1),
+            )
+        elif mode == "upsample3d":
+            self.resample = nn.Sequential(
+                QwenImageUpsample(scale_factor=(2.0, 2.0), mode="nearest-exact"),
+                nn.Conv2d(dim, dim // 2, 3, padding=1),
+            )
+            self.time_conv = QwenImageCausalConv3d(dim, dim * 2, (3, 1, 1), padding=(1, 0, 0))
+
+        elif mode == "downsample2d":
+            self.resample = nn.Sequential(nn.ZeroPad2d((0, 1, 0, 1)), nn.Conv2d(dim, dim, 3, stride=(2, 2)))
+        elif mode == "downsample3d":
+            self.resample = nn.Sequential(nn.ZeroPad2d((0, 1, 0, 1)), nn.Conv2d(dim, dim, 3, stride=(2, 2)))
+            self.time_conv = QwenImageCausalConv3d(dim, dim, (3, 1, 1), stride=(2, 1, 1), padding=(0, 0, 0))
+
+        else:
+            self.resample = nn.Identity()
+
+  ---- 结束 ----
+  实际 Resample 实例: 子模块=['resample', 'time_conv']
+    mode=upsample3d  upsample=?  属性=['resample']
     [decoder] in  (1, 16, 128, 128)
     [decoder] out (1, 3, 1024, 1024)
   A5f 失败: TypeError not all arguments converted during string formatting
@@ -241,7 +282,7 @@ torch 2.13.0+cu130 | diffusers 0.41.0
             67  diag.txt
       68191428  dit28_ref.npz
       72386208  dit_block_ref.npz
-         11851  export_log.txt
+         13607  export_log.txt
              0  fault.txt
          10701  ladder_log.txt
        2130904  meta.npz
@@ -407,6 +448,3 @@ class AnimaTextConditioner(ModelMixin, ConfigMixin, PeftAdapterMixin):
   tc(h,ids,t5ids)      ✗ IndexError index out of range in self
   cond (1, 512, 1024) std=0.0560  uncond (1, 512, 1024) std=0.0614
   ★★ text.npz 4.00 MB —— 真实 prompt 的 cond/uncond embedding
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   0a89dad..16c4bb3  main -> main
-
