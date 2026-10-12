@@ -25,15 +25,15 @@ torch 2.13.0+cu130 | diffusers 0.41.0
     [decoder] out (1, 3, 1024, 1024)
   4D 版输出 -> (1, 3, 1024, 1024)  mean=-0.313565 std=0.356231
   已摘掉 20 个调试钩子（导出前必须摘，避免干扰 torch.export）
-  ★ 最大绝对误差 = 2.727e-06
-  ★ 平均绝对误差 = 7.760e-08
+  ★ 最大绝对误差 = 2.673e-06
+  ★ 平均绝对误差 = 7.752e-08
   ★ allclose(atol=1e-4) = True
 
 >>>>>>>>>>>> STEP: A5 导出 TFLite <<<<<<<<<<<<
   尝试 litert_torch
     [decoder] in  (1, 16, 128, 128)
     [decoder] out (1, 3, 1024, 1024)
-  ★★ 导出成功 96.8 MB  22s
+  ★★ 导出成功 96.8 MB  19s
 
 >>>>>>>>>>>> STEP: A5c 分块数自对照：SDPA(0) / 4块 / 8块，同轮导出，手机上一个一个测 <<<<<<<<<<<<
     [decoder] in  (1, 16, 128, 128)
@@ -62,12 +62,43 @@ torch 2.13.0+cu130 | diffusers 0.41.0
     conv_out         params=7779  len=-1  type=QwenImageCausalConv3d
 
 >>>>>>>>>>>> STEP: A5f 诊断 p1 —— dump 真实 forward 源码 + 抓 mid_block 的实际输入 <<<<<<<<<<<<
-  ---- QwenImageDecoder3d.forward 源码 ----
-    def dec_traced(self, x, feat_cache=None, feat_idx=[0]):
-        log("    [decoder] in  %s" % (tuple(x.shape),))
-        y = _orig_dec_fwd(self, x, feat_cache, feat_idx)
-        log("    [decoder] out %s" % (tuple(y.shape),))
-        return y
+  ---- 【真实】QwenImageDecoder3d.forward 源码（从 _orig_dec_fwd 取）----
+    def forward(self, x, feat_cache=None, feat_idx=[0]) -> torch.Tensor:
+        ## conv1
+        if feat_cache is not None:
+            idx = feat_idx[0]
+            cache_x = x[:, :, -min(CACHE_T, x.shape[2]) :, :, :].clone()
+            if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
+                # cache last frame of last two chunk
+                cache_x = torch.cat([feat_cache[idx][:, :, -1, :, :].unsqueeze(2).to(cache_x.device), cache_x], dim=2)
+            x = self.conv_in(x, feat_cache[idx])
+            feat_cache[idx] = cache_x
+            feat_idx[0] += 1
+        else:
+            x = self.conv_in(x)
+
+        ## middle
+        x = self.mid_block(x, feat_cache, feat_idx)
+
+        ## upsamples
+        for up_block in self.up_blocks:
+            x = up_block(x, feat_cache, feat_idx)
+
+        ## head
+        x = self.norm_out(x)
+        x = self.nonlinearity(x)
+        if feat_cache is not None:
+            idx = feat_idx[0]
+            cache_x = x[:, :, -min(CACHE_T, x.shape[2]) :, :, :].clone()
+            if cache_x.shape[2] < 2 and feat_cache[idx] is not None:
+                # cache last frame of last two chunk
+                cache_x = torch.cat([feat_cache[idx][:, :, -1, :, :].unsqueeze(2).to(cache_x.device), cache_x], dim=2)
+            x = self.conv_out(x, feat_cache[idx])
+            feat_cache[idx] = cache_x
+            feat_idx[0] += 1
+        else:
+            x = self.conv_out(x)
+        return x
 
   ---- 源码结束 ----
   ---- QwenImageMidBlock.forward 源码 ----
@@ -178,7 +209,7 @@ torch 2.13.0+cu130 | diffusers 0.41.0
             67  diag.txt
       68191428  dit28_ref.npz
       72386208  dit_block_ref.npz
-          9870  export_log.txt
+         11115  export_log.txt
              0  fault.txt
          10701  ladder_log.txt
        2130904  meta.npz
@@ -346,6 +377,3 @@ class AnimaTextConditioner(ModelMixin, ConfigMixin, PeftAdapterMixin):
   tc(h,ids,t5ids)      ✗ IndexError index out of range in self
   cond (1, 512, 1024) std=0.0560  uncond (1, 512, 1024) std=0.0614
   ★★ text.npz 4.00 MB —— 真实 prompt 的 cond/uncond embedding
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   5bd2b56..ca63316  main -> main
-
