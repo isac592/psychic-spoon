@@ -33,42 +33,81 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   尝试 litert_torch
     [decoder] in  (1, 16, 128, 128)
     [decoder] out (1, 3, 1024, 1024)
-  litert_torch FAIL: ValueError Failed to run converter passes: /opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py:256:0: error: 'tfl.div' op operands don't have broadcast-compatible shapes
+  ★★ 导出成功 96.9 MB  27s
 
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 486, in main
-    m.convert(dec4, (z4,)).export(src)
-    ^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/litert_torch/_convert/interface.py", line 323, in convert
-    return Converter().convert(
-           ^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/litert_torch/_convert/interface.py", line 208, in convert
-    converted_model = core.convert_signatures(
-                      ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/contextlib.py", line 81, in inner
-    return func(*args, **kwds)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/litert_torch/_convert/core.py", line 158, in convert_signatures
-    exporter = litert_converter.exported_programs_to_flatbuffer(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/litert_torch/_convert/litert_converter.py", line 187, in exported_programs_to_flatbuffer
-    converter_api_ext.run_convert_to_tfl_passes(
-ValueError: Failed to run converter passes: /opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py:256:0: error: 'tfl.div' op operands don't have broadcast-compatible shapes
-
-
-  尝试 ai_edge_torch
-  ai_edge_torch FAIL: AttributeError module 'ai_edge_torch' has no attribute 'convert'
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 486, in main
-    m.convert(dec4, (z4,)).export(src)
-    ^^^^^^^^^
-AttributeError: module 'ai_edge_torch' has no attribute 'convert'
-
+>>>>>>>>>>>> STEP: A5c 尺寸二分：同一套 4D 代码，导出 SDPA 版多档尺寸（判定是不是尺寸悬崖） <<<<<<<<<<<<
+    [decoder] in  (1, 16, 64, 64)
+    [decoder] out (1, 3, 512, 512)
+  latent 64x64 SDPA 前向 OK -> 开始导出
+    [decoder] in  (1, 16, 64, 64)
+    [decoder] out (1, 3, 512, 512)
+  ★ vae_sdpa_512.tflite  latent 64x64  SDPA  96.8 MB
+    [decoder] in  (1, 16, 128, 128)
+    [decoder] out (1, 3, 1024, 1024)
+  latent 128x128 SDPA 前向 OK -> 开始导出
+    [decoder] in  (1, 16, 128, 128)
+    [decoder] out (1, 3, 1024, 1024)
+  ★ vae_sdpa_1024.tflite  latent 128x128  SDPA  96.8 MB
+  （主模型仍是分块版 vae_decoder_1024.tflite，A5c 只是额外导出对照）
 
 >>>>>>>>>>>> STEP: A5b 张量体量普查 —— 预测手机端单张量峰值内存 <<<<<<<<<<<<
-  普查失败: ValueError Could not open 'model/vae_decoder_1024.tflite'.The model allocation is null/empty
+  张量共 687 个，最大的 12 个：
+     201326592 元素  <class 'numpy.float32'> (1024, 1024, 1, 192)     768.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     201326592 元素  <class 'numpy.float32'> (1, 1024, 1024, 192)     768.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (512, 512, 1, 384)       384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+  ★ 单张量峰值 768.0 MB（手机内存上限约 3.7GB，DSH 自己占约 1.2GB）
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1024, 1024, 1, 192) 768 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 192) 768 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (512, 512, 1, 384) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
 
 >>>>>>>>>>>> STEP: A6 审计 flatbuffer —— 关键：5D 必须清零 <<<<<<<<<<<<
+  --- flatbuffer 审计: vae_decoder_1024.tflite  (96.85 MB) ---
+  subgraph0  tensors=687  秩直方图={4: 489, 1: 81, 2: 11, 0: 5, 3: 101}
+    IN [0] [1,16,128,128]FLOAT32
+    OUT[0] [1,3,1024,1024]FLOAT32
+    5D+ 张量个数 = 0
+  --- 算子表（按次数） ---
+  ★★ 联发科不支持的算子(按号): 无 —— 图有机会上 NPU
+  ★ NPU 已知不支持的算子: ['CALL_ONCE', 'ADD_N', 'SEGMENT_SUM']
+    MUL                        x 135
+    TRANSPOSE                  x 67
+    CONV_2D                    x 37
+    MIRROR_PAD                 x 30
+    LOG                        x 30
+    SUM                        x 30
+    MAXIMUM                    x 30
+    DIV                        x 30
+    LOGISTIC                   x 29
+    SELECT                     x 19
+    RESHAPE                    x 17
+    FULLY_CONNECTED            x 16
+    SOFTMAX                    x 16
+    SEGMENT_SUM                x 16
+    TANH                       x 15
+    CALL_ONCE                  x 6
+    CONCATENATION              x 4
+    ADD_N                      x 3
+  >>> 最大秩 = 4
+  >>> 张量全 <= 4D : True
+  >>> 图 I/O 全 <= 4D : True
 
 >>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
   --- out/ ---
@@ -78,7 +117,7 @@ AttributeError: module 'ai_edge_torch' has no attribute 'convert'
             67  diag.txt
       68191428  dit28_ref.npz
       72386208  dit_block_ref.npz
-          4196  export_log.txt
+          7069  export_log.txt
              0  fault.txt
          10701  ladder_log.txt
        2130904  meta.npz
@@ -95,13 +134,15 @@ AttributeError: module 'ai_edge_torch' has no attribute 'convert'
        1048704  vae_z5.npy
            694  wi16_log.txt
   --- model/ ---
-     (空)
+     101558344  vae_decoder_1024.tflite
+     101515656  vae_sdpa_1024.tflite
+     101508488  vae_sdpa_512.tflite
 
 ================ 结果汇总 ================
   数值等价(5D vs 4D) : PASS
-  TFLite 导出        : FAIL
-  全图 <= 4D         : FAIL
-  结论               : 还不能，看上面日志
+  TFLite 导出        : PASS
+  全图 <= 4D         : PASS
+  结论               : 可以拿去手机上试 NPU 了
 ==========================================
 
 ---- 文本编码探针 ----
@@ -240,6 +281,3 @@ class AnimaTextConditioner(ModelMixin, ConfigMixin, PeftAdapterMixin):
   tc(h,ids,t5ids)      ✗ IndexError index out of range in self
   cond (1, 512, 1024) std=0.0560  uncond (1, 512, 1024) std=0.0614
   ★★ text.npz 4.00 MB —— 真实 prompt 的 cond/uncond embedding
-git push rc=0 To https://github.com/isac592/psychic-spoon
-   873349e..5c82e67  main -> main
-
