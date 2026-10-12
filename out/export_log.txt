@@ -1,41 +1,34 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-config 关键项: in_channels=16 out_channels=16 patch_size=[1, 2, 2] text_embed_dim=1024
 
-==== patch_embed 类型: CosmosPatchEmbed ====
-class CosmosPatchEmbed(nn.Module):
-    def __init__(
-        self, in_channels: int, out_channels: int, patch_size: tuple[int, int, int], bias: bool = True
-    ) -> None:
-        super().__init__()
-        self.patch_size = patch_size
+>>>>>>>>>>>> A1 骨架 + 权重 <<<<<<<<<<<<
+  in_channels=16 out_channels=16 patch_size=[1, 2, 2]
+  权重 567 key
 
-        self.proj = nn.Linear(in_channels * patch_size[0] * patch_size[1] * patch_size[2], out_channels, bias=bias)
+>>>>>>>>>>>> A2 顶层子模块（找 head 的真名） <<<<<<<<<<<<
+  patch_embed                CosmosPatchEmbed
+  rope                       CosmosRotaryPosEmbed
+  time_embed                 CosmosEmbedding
+  transformer_blocks         ModuleList
+  norm_out                   CosmosAdaLayerNorm
+  proj_out                   Linear
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        batch_size, num_channels, num_frames, height, width = hidden_states.shape
-        p_t, p_h, p_w = self.patch_size
-        hidden_states = hidden_states.reshape(
-            batch_size, num_channels, num_frames // p_t, p_t, height // p_h, p_h, width // p_w, p_w
-        )
-        hidden_states = hidden_states.permute(0, 2, 4, 6, 1, 3, 5, 7).flatten(4, 7)
-        hidden_states = self.proj(hidden_states)
-        return hidden_states
+>>>>>>>>>>>> A3 patch_embed 4D 版 <<<<<<<<<<<<
+  patch_size=(1,2,2)  proj.in=68  proj.out=2048
+  PE4 前向 (1, 17, 128, 128) -> (1, 64, 64, 2048)
+  ★ patch_embed_4d.tflite 0.53 MB
 
----- 子模块 ----
-  (self)                         CosmosPatchEmbed
-  proj                           Linear
-!!!!!! 顶层异常: AttributeError 'CosmosTransformer3DModel' object has no attribute 'final_layer'
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 63, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 41, in main
-    log("\n==== final_layer 类型: %s ===="%type(model.final_layer).__name__)
-                                                ^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/modeling_utils.py", line 288, in __getattr__
-    return super().__getattr__(name)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1967, in __getattr__
-    raise AttributeError(
-AttributeError: 'CosmosTransformer3DModel' object has no attribute 'final_layer'
+>>>>>>>>>>>> A4 head 4D 版 <<<<<<<<<<<<
+  head 模块名 = proj_out  类型 = Linear
+    def forward(self, input: Tensor) -> Tensor:
+        """
+        Runs the forward pass.
+        """
+        return F.linear(input, self.weight, self.bias)
 
-  git push rc=0
+    (self)                       Linear
+  head 前向失败: TypeError Linear.forward() takes 2 positional arguments but 4 were given
+
+>>>>>>>>>>>> A5 动漫风提示词的文本 embedding <<<<<<<<<<<<
+  prompt = masterpiece, best quality, anime illustration, 1girl, silver long hair, red eyes, black school uniform, standing on a ro
+  cond (1, 512, 1024) std=0.0651  uncond (1, 512, 1024) std=0.0580
+  ★★ text.npz 4.00 MB
