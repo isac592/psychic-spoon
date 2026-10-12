@@ -196,3 +196,4 @@ Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
   块 28 个 (0..27)   chunk=512 FF拆16  变体 ['ff16']
   导出成功 28 个模型
+  git push rc=0
