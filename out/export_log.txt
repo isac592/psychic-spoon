@@ -1,82 +1,263 @@
+
+>>>>>>>>>>>> STEP: import <<<<<<<<<<<<
+python 3.11.17
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: chunk=1024  FF拆8  static_wi8_ai8  校准16份
 
->>>>>>>>>>>> A0 transforms shim <<<<<<<<<<<<
+>>>>>>>>>>>> STEP: A1 加载 VAE <<<<<<<<<<<<
+  decoder=73295331 params (279.6 MB fp32)
+  decoder Conv3d=33  Conv2d=5
 
->>>>>>>>>>>> A1 建模型骨架（1 层占位）+ 下载权重 <<<<<<<<<<<<
-  num_layers=28  hidden=2048  heads=16
-  权重下载 31s  1 个分片
-  总共 567 个 key（仅索引，未载入）
+>>>>>>>>>>>> STEP: A2 原始 5D 路径参考输出（务必在打补丁之前算） <<<<<<<<<<<<
+  vae.decode((1, 16, 1, 128, 128)) -> (1, 3, 1, 1024, 1024)  mean=-0.313565 std=0.356231
+  已保存 vae_z5.npy / vae_z4.npy / vae_out_ref.npy
 
->>>>>>>>>>>> A2 载入 patch_embed / time_embed，造真实分布输入 <<<<<<<<<<<<
-  extra_pos_embed_type = None   learnable_pos_embed 权重存在 = False
-  use_crossattn_projection = False   crossattn_proj 权重存在 = False
-  enc 直接使用，未投影
-  hidden (1, 4096, 2048) std=0.0540   enc (1, 256, 1024)   ets (1, 2048)   temb (1, 6144)
+>>>>>>>>>>>> STEP: A3 打 4D 补丁（4 个模块假设了 5D） <<<<<<<<<<<<
+  已打 4 个补丁: CausalConv3d / Resample / AttentionBlock / RMS_norm
+  已挂 15 个形状不变式钩子（batch/空间必须不变；resnet 可换通道，attention 不可）
 
->>>>>>>>>>>> A3 导出 patch_embed（小图，手机上做 patchify） <<<<<<<<<<<<
-  ★ patch_embed.tflite 0.16 MB
+>>>>>>>>>>>> STEP: A4 数值比对 5D 原版 vs 4D 新版 <<<<<<<<<<<<
+    [decoder] in  (1, 16, 128, 128)
+    [mid_block] (1, 384, 128, 128) -> (1, 384, 128, 128)
+    [up_block 0] (1, 384, 128, 128) -> (1, 192, 256, 256)
+    [up_block 1] (1, 192, 256, 256) -> (1, 192, 512, 512)
+    [up_block 2] (1, 192, 512, 512) -> (1, 96, 1024, 1024)
+    [up_block 3] (1, 96, 1024, 1024) -> (1, 96, 1024, 1024)
+    [decoder] out (1, 3, 1024, 1024)
+  4D 版输出 -> (1, 3, 1024, 1024)  mean=-0.313565 std=0.356231
+  已摘掉 20 个调试钩子（导出前必须摘，避免干扰 torch.export）
+  ★ 最大绝对误差 = 7.063e-06
+  ★ 平均绝对误差 = 2.435e-07
+  ★ allclose(atol=1e-4) = True
 
->>>>>>>>>>>> A4 导出 time_embed（小时序嵌入，手机上算 temb/ets） <<<<<<<<<<<<
-  ★ time_embed.tflite 16.10 MB
+>>>>>>>>>>>> STEP: A5 导出 TFLite <<<<<<<<<<<<
+  尝试 litert_torch
+    [decoder] in  (1, 16, 128, 128)
+    [decoder] out (1, 3, 1024, 1024)
+  ★★ 导出成功 96.9 MB  27s
 
->>>>>>>>>>>> A5 逐块导出 28 层（chunk=1024 / FF拆8 / static_wi8_ai8） <<<<<<<<<<<<
-  ★ 标定输入用**该层的真实输入**：链与导出合并成一次循环推进
-  extra_pos_embed_type 未设置 -> block0 输入就是 patch_embed 输出
-  block0 真实输入 h0_in (1, 4096, 2048)  std=0.0540
-  [ 1/28]  84.2s  等价 1.86e-07 OK  输入std=  0.0540  75.8 MB  累计  1.4分  RSS=4290 MB
-  [ 2/28]  82.6s  等价 3.34e-07 OK  输入std=  1.6601  75.8 MB  累计  2.8分  RSS=4597 MB
-  [ 3/28]  80.9s  等价 1.39e-07 OK  输入std=189.3991  75.8 MB  累计  4.1分  RSS=4599 MB
-  [ 4/28]  80.3s  等价 5.53e-08 OK  输入std=193.4146  75.8 MB  累计  5.5分  RSS=4623 MB
-  [ 5/28]  81.5s  等价 5.51e-08 OK  输入std=193.9879  75.8 MB  累计  6.8分  RSS=4624 MB
-  git push rc=0
-  [ 6/28]  82.7s  等价 5.50e-08 OK  输入std=194.4151  75.8 MB  累计  8.2分  RSS=4682 MB
-  [ 7/28]  81.9s  等价 1.01e-07 OK  输入std=196.5019  75.8 MB  累计  9.6分  RSS=4683 MB
-  [ 8/28]  81.8s  等价 9.13e-08 OK  输入std=200.3397  75.8 MB  累计 11.0分  RSS=4683 MB
-  [ 9/28]  81.5s  等价 9.43e-08 OK  输入std=204.6312  75.8 MB  累计 12.3分  RSS=4683 MB
-  [10/28]  81.6s  等价 8.63e-08 OK  输入std=209.8195  75.8 MB  累计 13.7分  RSS=4660 MB
-  git push rc=0
-  [11/28]  81.8s  等价 1.64e-07 OK  输入std=265.9796  75.8 MB  累计 15.1分  RSS=4684 MB
-  [12/28]  80.4s  等价 1.86e-07 OK  输入std=281.7193  75.8 MB  累计 16.4分  RSS=4652 MB
-  [13/28]  81.2s  等价 2.52e-07 OK  输入std=437.2022  75.8 MB  累计 17.8分  RSS=4716 MB
-  [14/28]  81.1s  等价 9.73e-08 OK  输入std=407.2946  75.8 MB  累计 19.1分  RSS=4700 MB
-  [15/28]  81.0s  等价 9.09e-08 OK  输入std=775.8027  75.8 MB  累计 20.5分  RSS=4740 MB
-  git push rc=0
-  [16/28]  81.4s  等价 8.17e-08 OK  输入std=504.4615  75.8 MB  累计 21.8分  RSS=4788 MB
-  [17/28]  81.3s  等价 1.98e-07 OK  输入std=452.6495  75.8 MB  累计 23.2分  RSS=4753 MB
-  [18/28]  81.6s  等价 2.15e-07 OK  输入std=328.9375  75.8 MB  累计 24.6分  RSS=4754 MB
-  [19/28]  80.9s  等价 2.52e-07 OK  输入std=272.1201  75.8 MB  累计 25.9分  RSS=4819 MB
-  [20/28]  80.7s  等价 3.60e-07 OK  输入std=346.0469  75.8 MB  累计 27.2分  RSS=4811 MB
-  git push rc=0
-  [21/28]  81.5s  等价 3.60e-07 OK  输入std=309.4003  75.8 MB  累计 28.6分  RSS=4819 MB
-  [22/28]  83.1s  等价 9.46e-07 OK  输入std=295.4555  75.8 MB  累计 30.0分  RSS=4875 MB
-  [23/28]  82.0s  等价 3.86e-07 OK  输入std=260.6383  75.8 MB  累计 31.4分  RSS=4955 MB
-  [24/28]  80.7s  等价 5.65e-07 OK  输入std=372.3939  75.8 MB  累计 32.7分  RSS=5003 MB
-  [25/28]  80.6s  等价 3.83e-07 OK  输入std=306.6581  75.8 MB  累计 34.1分  RSS=5051 MB
-  git push rc=0
-  [26/28]  81.2s  等价 4.49e-07 OK  输入std=326.0434  75.8 MB  累计 35.4分  RSS=5068 MB
-  [27/28]  81.3s  等价 2.01e-07 OK  输入std=360.4995  75.8 MB  累计 36.8分  RSS=5092 MB
-  [28/28]  81.7s  等价 8.53e-08 OK  输入std=516.1262  75.8 MB  累计 38.2分  RSS=5156 MB
+>>>>>>>>>>>> STEP: A5b 张量体量普查 —— 预测手机端单张量峰值内存 <<<<<<<<<<<<
+  张量共 687 个，最大的 12 个：
+     201326592 元素  <class 'numpy.float32'> (1024, 1024, 1, 192)     768.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     201326592 元素  <class 'numpy.float32'> (1, 1024, 1024, 192)     768.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (512, 512, 1, 384)       384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+     100663296 元素  <class 'numpy.float32'> (1, 1024, 1024, 96)      384.0 MB   __main__.main.<locals>.DecOnly4D/diffusers.models.autoen
+  ★ 单张量峰值 768.0 MB（手机内存上限约 3.7GB，DSH 自己占约 1.2GB）
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1024, 1024, 1, 192) 768 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 192) 768 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (512, 512, 1, 384) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
+    ⚠ 超过 300MB 的张量: __main__.main.<locals>.DecOnly4D/diffusers.models.autoen (1, 1024, 1024, 96) 384 MB
 
-  导出完成: 成功 28 / 28   超差或失败 0 个
+>>>>>>>>>>>> STEP: A6 审计 flatbuffer —— 关键：5D 必须清零 <<<<<<<<<<<<
+  --- flatbuffer 审计: vae_decoder_1024.tflite  (96.85 MB) ---
+  subgraph0  tensors=687  秩直方图={4: 489, 1: 81, 2: 11, 0: 5, 3: 101}
+    IN [0] [1,16,128,128]FLOAT32
+    OUT[0] [1,3,1024,1024]FLOAT32
+    5D+ 张量个数 = 0
+  --- 算子表（按次数） ---
+    MUL                        x 135
+    TRANSPOSE                  x 67
+    CONV_2D                    x 37
+    MIRROR_PAD                 x 30
+    LOG                        x 30
+    SUM                        x 30
+    MAXIMUM                    x 30
+    DIV                        x 30
+    LOGISTIC                   x 29
+    SELECT                     x 19
+    RESHAPE                    x 17
+    FULLY_CONNECTED            x 16
+    SOFTMAX                    x 16
+    SEGMENT_SUM                x 16
+    TANH                       x 15
+    CALL_ONCE                  x 6
+    CONCATENATION              x 4
+    ADD_N                      x 3
+  >>> 最大秩 = 4
+  >>> 张量全 <= 4D : True
+  >>> 图 I/O 全 <= 4D : True
 
->>>>>>>>>>>> A5b 导出 head（norm_out + proj_out + unpatchify） <<<<<<<<<<<<
-  head 前向 OK -> (1, 16, 1, 128, 128)
-  ★ head.tflite 1.69 MB
+>>>>>>>>>>>> STEP: 结束 <<<<<<<<<<<<
+  --- out/ ---
+      57352508  block.tflite
+           437  block_ops.txt
+       7868612  block_ref.npz
+            67  diag.txt
+      68191428  dit28_ref.npz
+      72386208  dit_block_ref.npz
+          6204  export_log.txt
+             0  fault.txt
+         10701  ladder_log.txt
+       2130904  meta.npz
+      68191428  opt_realistic_ref.npz
+      69240004  ref_blk0.npz
+      69240004  ref_blk1.npz
+      69240004  ref_chain.npz
+             6  step.txt
+        786560  vae_out.npy
+      12583040  vae_out_ref.npy
+         65664  vae_z.npy
+       1048704  vae_z4.npy
+       1048704  vae_z5.npy
+           694  wi16_log.txt
+  --- model/ ---
+     101558344  vae_decoder_1024.tflite
 
->>>>>>>>>>>> A6 整链参考（A5 循环里链已经推到底，h_cur 就是 28 层输出） <<<<<<<<<<<<
-  整链输出 (1, 4096, 2048)  std=1521.7921  min=-5726.098  max=45801.500
-  已保存 dit28_ref.npz   hidden(=h0_in) (1, 4096, 2048)   out (1, 4096, 2048)
-  h0_in 与 raw hidden 相同（无 extra_pos_emb）
+================ 结果汇总 ================
+  数值等价(5D vs 4D) : PASS
+  TFLite 导出        : PASS
+  全图 <= 4D         : PASS
+  结论               : 可以拿去手机上试 NPU 了
+==========================================
 
->>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  配置           chunk=1024 FF拆8 static_wi8_ai8
-  逐块等价性     成功 28/28  超差 0
-  参数量核对     PASS
-  整链参考       PASS
-  总耗时         38.2 分钟
-  模型总大小     2.07 GB
-  patch_embed    PASS
-  time_embed     PASS
-  head           PASS
-  git push rc=0
+---- 文本编码探针 ----
+  diffusers 0.41.0 | transformers 5.19.0 | torch 2.13.0+cu130
+  diffusers.AnimaTextConditioner     有
+  diffusers.AnimaModularPipeline     有
+  diffusers.ModularPipeline          有
+  diffusers.AnimaAutoBlocks          有
+  含 odular: ['AnimaModularPipeline', 'Cosmos3DistilledModularPipeline', 'Cosmos3OmniModularPipeline', 'EchoModularPipeline', 'ErnieImageModularPipeline', 'Flux2KleinBaseModularPipeline', 'Flux2KleinModularPipeline', 'Flux2ModularPipeline', 'FluxKontextModularPipeline', 'FluxModularPipeline', 'HeliosModularPipeline', 'HeliosPyramidDistilledModularPipeline', 'HeliosPyramidModularPipeline', 'HunyuanVideo15ModularPipeline', 'Ideogram4ModularPipeline', 'Krea2ModularPipeline', 'Krea2TurboModularPipeline', 'LTX25ModularPipeline', 'LTX2ModularPipeline', 'LTXModularPipeline', 'MiniMaxH3ModularPipeline', 'MiniMaxMusic3ModularPipeline', 'ModularPipeline', 'ModularPipelineBlocks', 'QwenImageEditModularPipeline', 'QwenImageEditPlusModularPipeline', 'QwenImageLayeredModularPipeline', 'QwenImageModularPipeline', 'StableDiffusion3ModularPipeline', 'StableDiffusionXLModularPipeline', 'Wan22Image2VideoModularPipeline', 'Wan22ModularPipeline', 'Wan22VaceModularPipeline', 'WanAnimate2DistilledModularPipeline', 'WanAnimate2ModularPipeline', 'WanImage2VideoModularPipeline', 'WanModularPipeline', 'ZImageModularPipeline', 'modular_pipelines']
+  含 nima:   ['AnimaAutoBlocks', 'AnimaModularPipeline', 'AnimaTextConditioner', 'AnimateDiffControlNetPipeline', 'AnimateDiffPAGPipeline', 'AnimateDiffPipeline', 'AnimateDiffSDXLPipeline', 'AnimateDiffSparseControlNetPipeline', 'AnimateDiffVideoToVideoControlNetPipeline', 'AnimateDiffVideoToVideoPipeline', 'EasyAnimateControlPipeline', 'EasyAnimateInpaintPipeline', 'EasyAnimatePipeline', 'EasyAnimateTransformer3DModel', 'WanAnimate2Blocks', 'WanAnimate2DistilledBlocks', 'WanAnimate2DistilledModularPipeline', 'WanAnimate2ModularPipeline', 'WanAnimate2Transformer3DModel', 'WanAnimatePipeline', 'WanAnimateTransformer3DModel']
+  ✓ Qwen2Tokenizer + Qwen3Model
+  ✓ AnimaTextConditioner
+  forward 签名: (self, source_hidden_states: torch.Tensor, target_input_ids: torch.Tensor, target_attention_mask: torch.Tensor | None = None, source_attention_mask: torch.Tensor | None = None) -> torch.Tensor
+  ---- 源码 ----
+class AnimaTextConditioner(ModelMixin, ConfigMixin, PeftAdapterMixin):
+    r"""
+    Text conditioner used by Anima to map Qwen3 hidden states and T5 token ids to Cosmos text embeddings.
+
+    Anima reuses the Cosmos Predict2 DiT. The only model-specific conditioning module is this LLM adapter, which
+    cross-attends from learned T5 token embeddings to Qwen3 text encoder hidden states before the diffusion loop.
+    `target_dim` is the conditioner output dimension and must match the transformer's `text_embed_dim`.
+    """
+
+    _supports_gradient_checkpointing = True
+    _no_split_modules = ["AnimaTextConditionerBlock"]
+
+    @register_to_config
+    def __init__(
+        self,
+        source_dim: int = 1024,
+        target_dim: int = 1024,
+        model_dim: int = 1024,
+        num_layers: int = 6,
+        num_attention_heads: int = 16,
+        mlp_ratio: float = 4.0,
+        target_vocab_size: int = 32128,
+        use_self_attention: bool = True,
+        use_layer_norm: bool = False,
+        min_sequence_length: int = 512,
+    ):
+        super().__init__()
+        self.embed = nn.Embedding(target_vocab_size, target_dim)
+        self.in_proj = nn.Linear(target_dim, model_dim) if model_dim != target_dim else nn.Identity()
+        self.rotary_emb = AnimaRotaryEmbedding(model_dim // num_attention_heads)
+        self.blocks = nn.ModuleList(
+            [
+                AnimaTextConditionerBlock(
+                    source_dim=source_dim,
+                    model_dim=model_dim,
+                    num_attention_heads=num_attention_heads,
+                    mlp_ratio=mlp_ratio,
+                    use_self_attention=use_self_attention,
+                    use_layer_norm=use_layer_norm,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+        self.out_proj = nn.Linear(model_dim, target_dim)
+        self.norm = nn.RMSNorm(target_dim, eps=1e-6)
+        self.gradient_checkpointing = False
+
+    @staticmethod
+    def _prepare_attention_mask(attention_mask: torch.Tensor | None) -> torch.Tensor | None:
+        if attention_mask is None:
+            return None
+        attention_mask = attention_mask.to(torch.bool)
+        if attention_mask.ndim == 2:
+            attention_mask = attention_mask.unsqueeze(1).unsqueeze(1)
+        return attention_mask
+
+    def forward(
+        self,
+        source_hidden_states: torch.Tensor,
+        target_input_ids: torch.Tensor,
+        target_attention_mask: torch.Tensor | None = None,
+        source_attention_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            source_hidden_states (`torch.Tensor` of shape `(batch_size, source_sequence_length, source_dim)`):
+                Qwen3 text encoder hidden states to condition on.
+            target_input_ids (`torch.Tensor` of shape `(batch_size, target_sequence_length)`):
+                T5 token ids used as learned query tokens.
+            target_attention_mask (`torch.Tensor`, *optional*):
+                Attention mask for the target T5 token ids.
+            source_attention_mask (`torch.Tensor`, *optional*):
+                Attention mask for the source Qwen3 hidden states.
+
+        Returns:
+            `torch.Tensor`: Text conditioning embeddings for the Cosmos transformer.
+        """
+        target_attention_mask = self._prepare_attention_mask(target_attention_mask)
+        source_attention_mask = self._prepare_attention_mask(source_attention_mask)
+
+        hidden_states = self.embed(target_input_ids).to(dtype=source_hidden_states.dtype)
+        hidden_states = self.in_proj(hidden_states)
+
+        position_ids = torch.arange(hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+        source_position_ids = torch.arange(source_hidden_states.shape[1], device=hidden_states.device).unsqueeze(0)
+        position_embeddings = self.rotary_emb(hidden_states, position_ids)
+        source_position_embeddings = self.rotary_emb(hidden_states, source_position_ids)
+
+        for block in self.blocks:
+            if torch.is_grad_enabled() and self.gradient_checkpointing:
+                hidden_states = self._gradient_checkpointing_func(
+                    block,
+                    hidden_states,
+                    source_hidden_states,
+                    target_attention_mask,
+                    source_attention_mask,
+                    position_embeddings,
+                    source_position_embeddings,
+                )
+            else:
+                hidden_states = block(
+                    hidden_states,
+                    source_hidden_states,
+                    target_attention_mask=target_attention_mask,
+                    source_attention_mask=source_attention_mask,
+                    position_embeddings=position_embeddings,
+                    source_position_embeddings=source_position_embeddings,
+                )
+
+        hidden_states = self.norm(self.out_proj(hidden_states))
+
+        if target_attention_mask is not None:
+           
+  ---- 源码结束 ----
+  token ids (1, 512)   Qwen3 输出 (1, 512, 1024)
+  ✓ T5Tokenizer  vocab=32100  ids (1, 512)
+  tc(h)                ✗ TypeError AnimaTextConditioner.forward() missing 1 required positional argument: 'target_input_ids'
+  tc(h,None)           ✗ TypeError embedding(): argument 'indices' (position 2) must be Tensor, not NoneType
+  tc(h,h)              ✗ RuntimeError Expected tensor for argument #1 'indices' to have one of the following scalar types: Long, Int; but got torch.FloatTensor instead (while checking arguments for embedding)
+  tc(h,t5ids)          -> (1, 512, 1024)
+  tc(t5ids)            ✗ TypeError AnimaTextConditioner.forward() missing 1 required positional argument: 'target_input_ids'
+  tc(h,ids,t5ids)      ✗ IndexError index out of range in self
+  cond (1, 512, 1024) std=0.0560  uncond (1, 512, 1024) std=0.0614
+  ★★ text.npz 4.00 MB —— 真实 prompt 的 cond/uncond embedding
