@@ -38,3 +38,4 @@ Traceback (most recent call last):
     raise AttributeError(
 AttributeError: 'CosmosTransformer3DModel' object has no attribute 'final_layer'
 
+  git push rc=0
