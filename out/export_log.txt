@@ -1,120 +1,34 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-patch_size=(1,2,2) out_channels=16
 
->>>>>>>>>>>> A1 dump forward 尾部（unpatchify 的真实写法） <<<<<<<<<<<<
-cted timestep to have shape [B, 1, T, 1, 1] or [T], but got {timestep.shape}")
+>>>>>>>>>>>> A1 骨架 + 权重 <<<<<<<<<<<<
+  in_channels=16 out_channels=16 patch_size=[1, 2, 2]
+  权重 567 key
 
-        # 5. Process encoder hidden states
-        text_context, img_context = (
-            encoder_hidden_states if isinstance(encoder_hidden_states, tuple) else (encoder_hidden_states, None)
-        )
-        if self.config.use_crossattn_projection:
-            text_context = self.crossattn_proj(text_context)
+>>>>>>>>>>>> A2 顶层子模块（找 head 的真名） <<<<<<<<<<<<
+  patch_embed                CosmosPatchEmbed
+  rope                       CosmosRotaryPosEmbed
+  time_embed                 CosmosEmbedding
+  transformer_blocks         ModuleList
+  norm_out                   CosmosAdaLayerNorm
+  proj_out                   Linear
 
-        if img_context is not None and self.config.img_context_dim_in:
-            img_context = self.img_context_proj(img_context)
+>>>>>>>>>>>> A3 patch_embed 4D 版 <<<<<<<<<<<<
+  patch_size=(1,2,2)  proj.in=68  proj.out=2048
+  PE4 前向 (1, 17, 128, 128) -> (1, 64, 64, 2048)
+  ★ patch_embed_4d.tflite 0.53 MB
 
-        processed_encoder_hidden_states = (
-            (text_context, img_context) if isinstance(encoder_hidden_states, tuple) else text_context
-        )
+>>>>>>>>>>>> A4 head 4D 版 <<<<<<<<<<<<
+  head 模块名 = proj_out  类型 = Linear
+    def forward(self, input: Tensor) -> Tensor:
+        """
+        Runs the forward pass.
+        """
+        return F.linear(input, self.weight, self.bias)
 
-        # 6. Build controlnet block index map
-        controlnet_block_index_map = {}
-        if block_controlnet_hidden_states is not None:
-            n_blocks = len(self.transformer_blocks)
-            controlnet_block_index_map = {
-                block_idx: block_controlnet_hidden_states[idx]
-                for idx, block_idx in list(enumerate(range(0, n_blocks, self.config.controlnet_block_every_n)))
-            }
+    (self)                       Linear
+  head 前向失败: TypeError Linear.forward() takes 2 positional arguments but 4 were given
 
-        # 7. Transformer blocks
-        for block_idx, block in enumerate(self.transformer_blocks):
-            controlnet_residual = controlnet_block_index_map.get(block_idx)
-            if torch.is_grad_enabled() and self.gradient_checkpointing:
-                hidden_states = self._gradient_checkpointing_func(
-                    block,
-                    hidden_states,
-                    processed_encoder_hidden_states,
-                    embedded_timestep,
-                    temb,
-                    image_rotary_emb,
-                    extra_pos_emb,
-                    attention_mask,
-                    controlnet_residual,
-                )
-            else:
-                hidden_states = block(
-                    hidden_states,
-                    processed_encoder_hidden_states,
-                    embedded_timestep,
-                    temb,
-                    image_rotary_emb,
-                    extra_pos_emb,
-                    attention_mask,
-                    controlnet_residual,
-                )
-
-        # 8. Output norm & projection & unpatchify
-        hidden_states = self.norm_out(hidden_states, embedded_timestep, temb)
-        hidden_states = self.proj_out(hidden_states)
-        hidden_states = hidden_states.unflatten(2, (p_h, p_w, p_t, -1))
-        hidden_states = hidden_states.unflatten(1, (post_patch_num_frames, post_patch_height, post_patch_width))
-        # NOTE: The permutation order here is not the inverse operation of what happens when patching as usually expected.
-        # It might be a source of confusion to the reader, but this is correct
-        hidden_states = hidden_states.permute(0, 7, 1, 6, 2, 4, 3, 5)
-        hidden_states = hidden_states.flatten(6, 7).flatten(4, 5).flatten(2, 3)
-
-        if not return_dict:
-            return (hidden_states,)
-
-        return Transformer2DModelOutput(sample=hidden_states)
-
-
->>>>>>>>>>>> A2 找 unpatchify 函数 <<<<<<<<<<<<
-  模块内相关名字: ['CosmosPatchEmbed', 'dispatch_attention_fn']
-  ---- dispatch_attention_fn ----
-def dispatch_attention_fn(
-    query: torch.Tensor,
-    key: torch.Tensor,
-    value: torch.Tensor,
-    attn_mask: torch.Tensor | None = None,
-    dropout_p: float = 0.0,
-    is_causal: bool = False,
-    scale: float | None = None,
-    enable_gqa: bool = False,
-    attention_kwargs: dict[str, Any] | None = None,
-    *,
-    backend: AttentionBackendName | None = None,
-    parallel_config: "ParallelConfig" | None = None,
-) -> torch.Tensor:
-    attention_kwargs = attention_kwargs or {}
-
-    if backend is None:
-        # If no backend is specified, we either use the default backend (set via the DIFFUSERS_ATTN_BACKEND environment
-        # variable), or we use a custom backend based on whether user is using the `attention_backend` context manager
-        backend_name, backend_fn = _AttentionBackendRegistry.get_active_backend()
-    else:
-        backend_name = AttentionBackendName(backend)
-        backend_fn = _AttentionBackendRegistry._backends.get(backend_name)
-
-    kwargs = {
-        "query": query,
-        "key": key,
-        "value": value,
-        "attn_mask": attn_mask,
-        "dropout_p": dropout_p,
-        "is_causal": is_causal,
-        "scale": scale,
-        **attention_kwargs,
-        "_parallel_config": parallel_config,
-    }
-    # Equivalent to `is_torch_version(">=", "2.5.0")` — use module-level constant to avoid
-    # Dynamo tracing into the lru_cache-wrapped `is_to
-
->>>>>>>>>>>> A3 造 HD4 并数值验证 <<<<<<<<<<<<
-  hh (1, 4096, 2048)  ets (1, 2048)  temb (1, 6144)
-  HD4 前向 -> (1, 16, 128, 128)   std=6.6478
-  参考 norm_out->proj_out -> (1, 4096, 64)
-  ★ 与参考最大相对误差 0.000e+00 OK
-  ★ head_4d.tflite 6.51 MB
-  git push rc=0
+>>>>>>>>>>>> A5 动漫风提示词的文本 embedding <<<<<<<<<<<<
+  prompt = masterpiece, best quality, anime illustration, 1girl, silver long hair, red eyes, black school uniform, standing on a ro
+  cond (1, 512, 1024) std=0.0651  uncond (1, 512, 1024) std=0.0580
+  ★★ text.npz 4.00 MB
