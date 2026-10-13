@@ -11,19 +11,19 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ scaling_factor=1.0  shift_factor=None
 
 >>>>>>>>>>>> A3 编码 → latent <<<<<<<<<<<<
+  latent（VAE 原始输出） (1, 16, 1, 128, 128)  rms=1.8665 min=-5.31 max=7.02
+   mul_sf    rms=1.8665 min=-5.31 max=7.02
+   shift_mul rms=1.8665 min=-5.31 max=7.02
+   raw       rms=1.8665 min=-5.31 max=7.02
 
-!!!!!! 顶层异常: ValueError not enough values to unpack (expected 5, got 4)
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 109, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 66, in main
-    enc=vae.encode(x)
-        ^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 834, in encode
-    h = self._encode(x)
-        ^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 791, in _encode
-    _, _, num_frame, height, width = x.shape
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ValueError: not enough values to unpack (expected 5, got 4)
+>>>>>>>>>>>> A4 解码（用 pipeline 的标准写法）→ 往返图 <<<<<<<<<<<<
+  解码(mul_sf) 均值 121.9 标准差 79.4 → rt_out_mul_sf.png
+  解码(raw) 均值 121.9 标准差 79.4 → rt_out_raw.png
+  解码(shift_mul) 均值 121.9 标准差 79.4 → rt_out_shift_mul.png
 
+>>>>>>>>>>>> A5 自检（往返保真度） <<<<<<<<<<<<
+  mul_sf    PSNR=43.89 dB  （>20dB 说明往返基本还原）
+  raw       PSNR=43.89 dB  （>20dB 说明往返基本还原）
+  shift_mul PSNR=43.89 dB  （>20dB 说明往返基本还原）
+  ★ 最佳约定 = mul_sf  PSNR 43.89 dB  ⇒ VAE 与 latent 约定正确
+  ★ 真实 latent 的 rms 应接近上面 raw 那一行 —— 手机端 DiT 输出可以拿它当标尺
