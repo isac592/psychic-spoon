@@ -1,1 +1,1 @@
-REF  2 in_rms=0.108022 in_max=3.0186 out_rms=761.01 out_max=49012.4
+REF  2 in_rms=292.416 in_max=6536.64 out_rms=315.393 out_max=7820.59

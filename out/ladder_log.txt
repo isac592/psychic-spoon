@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[2] chunk=512 FF拆16   变体 3 个
+配置: 块[0, 1, 2] chunk=512 FF拆16   变体 3 个
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -16,7 +16,7 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ 变体共 3 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 30s  1 分片
+  权重下载 16s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -24,60 +24,68 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
 
->>>>>>>>>>>> A4 量化阶梯导出（block [2]，共 3 个变体） <<<<<<<<<<<<
+>>>>>>>>>>>> A4 量化阶梯导出（block [0, 1, 2]，共 3 个变体） <<<<<<<<<<<<
+
+  ── block 0 ──
+  等价性 2.21e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
+  （block 0 只算 fp32 参考链，不导出）
+
+  ── block 1 ──
+  等价性 2.99e-07 OK   输入 std=1.7455  输出 std=292.4155  |max|=6536.6
+  （block 1 只算 fp32 参考链，不导出）
 
   ── block 2 ──
-  等价性 2.39e-07 OK   输入 std=0.1080  输出 std=761.0054  |max|=49012.4
+  等价性 2.50e-07 OK   输入 std=292.4155  输出 std=315.3923  |max|=7820.6
   ★ ff16c                     168.66 MB  I/O=I16/I16/I16/I16->I16
   ★ ff32                      264.19 MB  I/O=I16/I16/I16/I16->I16
   ★ a4off                     300.09 MB  I/O=I16/I16/I16/I16->I16
 
 >>>>>>>>>>>> A4.5 ★ 变体判决：每个变体都喂同一份 fp32 参考输入，与 fp32 参考输出逐元素比对 <<<<<<<<<<<<
   解释器: ai_edge_litert.interpreter
-  参考：in_2 rms=0.1080  out_2 rms=761.0102  max=49012.4453
-  ★★ ff16c   CI口径   0.1444%   RMS口径   0.4206%   最大差 2.7418e+02   输出饱和 0   invoke 10.6s
-     [ff16c] 张量 250 个：占比>0.95 的 98 个，>1.0（真实激活超出标定量程）的 61 个
-       ★超范围 idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
-       ★超范围 idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
-       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
-       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
-       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=87
-       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
-       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
-       ★超范围 idx295   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0003157 量程=10.34 max=10.34 占比=1.000 饱和=1
-       ★超范围 idx296   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001973 量程=6.465 max=6.466 占比=1.000 饱和=1
-       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=72
+  参考：in_2 rms=292.4159  out_2 rms=315.3925  max=7820.5933
+  ★★ ff16c   CI口径   0.0553%   RMS口径   0.1285%   最大差 2.6916e+01   输出饱和 0   invoke 17.0s
+     [ff16c] 张量 250 个：占比>0.95 的 72 个，>1.0（真实激活超出标定量程）的 53 个
+       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=388
+       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=388
+       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=395
+       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=388
+       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=388
+       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=405
        ★超范围 idx298   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.001074 量程=35.2 max=35.2 占比=1.000 饱和=2
        ★超范围 idx299   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.393e-06 量程=0.275 max=0.275 占比=1.000 饱和=2
-       ·接近   idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
-       ·接近   idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
-       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
-       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
-       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=87
-       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
-       int16 张量 120 个：占比 中位 1.0000  90分位 1.0000  最大 1.0000
-  ★★ ff32    CI口径   0.0856%   RMS口径   0.1604%   最大差 8.3386e+01   输出饱和 0   invoke 11.1s
-     [ff32] 张量 184 个：占比>0.95 的 50 个，>1.0（真实激活超出标定量程）的 26 个
-       ★超范围 idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
-       ★超范围 idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
-       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
-       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
-       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=16
-       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
-       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
-       ★超范围 idx295   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0003157 量程=10.34 max=10.34 占比=1.000 饱和=1
-       ★超范围 idx296   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001973 量程=6.465 max=6.466 占比=1.000 饱和=1
-       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=25
-       ★超范围 idx303   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002286 量程=7.491 max=7.492 占比=1.000 饱和=25
-       ★超范围 idx304   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001518 量程=4.975 max=4.975 占比=1.000 饱和=25
-       ·接近   idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
-       ·接近   idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
-       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
-       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
-       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=16
-       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
-       int16 张量 56 个：占比 中位 1.0000  90分位 1.0000  最大 1.0000
-  ★★ a4off   CI口径   0.0855%   RMS口径   0.1595%   最大差 8.1886e+01   输出饱和 0   invoke 6.7s
+       ★超范围 idx300   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.393e-06 量程=0.275 max=0.275 占比=1.000 饱和=2
+       ★超范围 idx301   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.393e-06 量程=0.275 max=0.275 占比=1.000 饱和=2
+       ★超范围 idx302   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002134 量程=6.992 max=6.992 占比=1.000 饱和=8
+       ★超范围 idx303   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002286 量程=7.491 max=7.492 占比=1.000 饱和=405
+       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=388
+       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=388
+       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=395
+       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=388
+       ·接近   idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=388
+       ·接近   idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=405
+       int16 张量 120 个：占比 中位 0.9997  90分位 1.0000  最大 1.0000
+  ★★ ff32    CI口径   0.0545%   RMS口径   0.1222%   最大差 2.5971e+01   输出饱和 0   invoke 13.8s
+     [ff32] 张量 184 个：占比>0.95 的 41 个，>1.0（真实激活超出标定量程）的 17 个
+       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=20
+       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=20
+       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=24
+       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=20
+       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=20
+       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=32
+       ★超范围 idx303   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002286 量程=7.491 max=7.492 占比=1.000 饱和=32
+       ★超范围 idx304   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001518 量程=4.975 max=4.975 占比=1.000 饱和=32
+       ★超范围 idx305   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=1
+       ★超范围 idx307   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=4.514e-05 量程=1.479 max=1.479 占比=1.000 饱和=32
+       ★超范围 idx311   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=9.451e-05 量程=3.097 max=3.097 占比=1.000 饱和=360
+       ★超范围 idx312   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=9.451e-05 量程=3.097 max=3.097 占比=1.000 饱和=360
+       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=20
+       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=20
+       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=24
+       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=20
+       ·接近   idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=20
+       ·接近   idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=32
+       int16 张量 56 个：占比 中位 0.9997  90分位 1.0000  最大 1.0000
+  ★★ a4off   CI口径   0.0544%   RMS口径   0.1227%   最大差 2.6287e+01   输出饱和 0   invoke 7.8s
 
 >>>>>>>>>>>> A5 存手机端比对参考：in_2.npy(fp32) + out_2.npy(fp32) → model/（会随 release 上传） <<<<<<<<<<<<
   ★ model/in_2.npy  32.0 MB  (blk2 的正确输入，fp32)
@@ -93,6 +101,5 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> A6 文本编码：本轮跳过（只为 blk2 定位，不浪费时间） <<<<<<<<<<<<
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  块 1 个 (2..2)   chunk=512 FF拆16  变体 ['ff16c', 'ff32', 'a4off']
+  块 3 个 (2..2)   chunk=512 FF拆16  变体 ['ff16c', 'ff32', 'a4off']
   导出成功 3 个模型
-  git push rc=0
