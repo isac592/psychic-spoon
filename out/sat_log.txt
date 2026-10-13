@@ -4,13 +4,26 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   权重 567 个 key
 
 >>>>>>>>>>>> A2 造参考输入：跑 FP32 的 block0、block1，取 block1 的输出 = blk2 的输入 <<<<<<<<<<<<
+  hidden (1, 4096, 2048)  temb (1, 6144)  ets (1, 2048)
+  FP32 参考 block0 输出 rms=1.7455  max=69.0569  shape=(1, 4096, 2048)
+  FP32 参考 block1 输出 rms=292.4159  max=6536.6372  shape=(1, 4096, 2048)
 
-!!!!!! 顶层异常: IndexError Dimension out of range (expected to be in range of [-3, 2], but got 3)
+>>>>>>>>>>>> A3 从 release 下载已发布的 blk2_ff16.tflite <<<<<<<<<<<<
+  下载 https://gh-proxy.com/https://github.com/isac592/psychic-spoon/releases/download/anima/blk2_ff16.tflite
+   失败 https://gh-proxy.com/: HTTP Error 404: Not Found
+  下载 https://ghfast.top/https://github.com/isac592/psychic-spoon/releases/download/anima/blk2_ff16.tflite
+   失败 https://ghfast.top/: HTTP Error 404: NOT FOUND
+  下载 https://ghproxy.net/https://github.com/isac592/psychic-spoon/releases/download/anima/blk2_ff16.tflite
+   失败 https://ghproxy.net/: HTTP Error 404: NOT FOUND
+  下载 https://github.com/isac592/psychic-spoon/releases/download/anima/blk2_ff16.tflite
+   失败 (直连): HTTP Error 404: Not Found
+
+!!!!!! 顶层异常: RuntimeError 下载失败
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 216, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 191, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 83, in main
-    hidden = pe.flatten(1, 2) if pe.dim() == 4 else pe.flatten(1, 3)
-                                                    ^^^^^^^^^^^^^^^^
-IndexError: Dimension out of range (expected to be in range of [-3, 2], but got 3)
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 117, in main
+    if not fetch(url, dst): raise RuntimeError("下载失败")
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: 下载失败
 
