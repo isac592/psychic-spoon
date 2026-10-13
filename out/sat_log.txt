@@ -1,0 +1,16 @@
+torch 2.13.0+cu130 | diffusers 0.41.0
+
+>>>>>>>>>>>> A1 下载模型权重（只为了造出参考输入 in_2） <<<<<<<<<<<<
+  权重 567 个 key
+
+>>>>>>>>>>>> A2 造参考输入：跑 FP32 的 block0、block1，取 block1 的输出 = blk2 的输入 <<<<<<<<<<<<
+
+!!!!!! 顶层异常: IndexError Dimension out of range (expected to be in range of [-3, 2], but got 3)
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 216, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 83, in main
+    hidden = pe.flatten(1, 2) if pe.dim() == 4 else pe.flatten(1, 3)
+                                                    ^^^^^^^^^^^^^^^^
+IndexError: Dimension out of range (expected to be in range of [-3, 2], but got 3)
+
