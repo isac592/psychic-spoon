@@ -1,0 +1,29 @@
+torch 2.13.0+cu130 | diffusers 0.41.0
+
+>>>>>>>>>>>> A1 造一张【有结构】的正常图（渐变+色块+圆+文字，1024x1024） <<<<<<<<<<<<
+  ✓ rt_input.png  均值 122.3 标准差 79.6
+
+>>>>>>>>>>>> A2 载入 fp32 VAE（试几种类） <<<<<<<<<<<<
+  AutoencoderKL 失败: Error(s) in loading state_dict for AutoencoderKL:
+	size mismatch for encoder.conv_in.weight: copying a param with shape torch.Size([96, 3, 3, 3, 3]) f
+  ✓ AutoencoderKLQwenImage
+  vae.config: {'latents_mean': [-0.7571, -0.7089, -0.9113, 0.1075, -0.1745, 0.9653, -0.1517, 1.5508, 0.4134, -0.0715, 0.5517, -0.3632, -0.1922, -0.9497, 0.2503, -0.2921], 'latents_std': [2.8184, 1.4541, 2.3275, 2.6558, 1.2196, 1.7708, 2.6052, 2.0743, 3.2687, 2.1526, 2.8652, 1.5579, 1.6382, 1.1253, 2.8251, 1.916]}
+  ★ scaling_factor=1.0  shift_factor=None
+
+>>>>>>>>>>>> A3 编码 → latent <<<<<<<<<<<<
+
+!!!!!! 顶层异常: ValueError not enough values to unpack (expected 5, got 4)
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 109, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 66, in main
+    enc=vae.encode(x)
+        ^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 834, in encode
+    h = self._encode(x)
+        ^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/models/autoencoders/autoencoder_kl_qwenimage.py", line 791, in _encode
+    _, _, num_frame, height, width = x.shape
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 5, got 4)
+
