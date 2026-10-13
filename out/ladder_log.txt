@@ -1,5 +1,5 @@
 torch 2.13.0+cu130 | diffusers 0.41.0
-配置: 块[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27] chunk=512 FF拆16   变体 1 个
+配置: 块[2] chunk=512 FF拆16   变体 3 个
 
 >>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
   AlgorithmName: 不存在
@@ -10,11 +10,13 @@ torch 2.13.0+cu130 | diffusers 0.41.0
   ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
   ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
   ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
-  ✓ ff16                     全局ai16 覆盖2条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*']
-  ★ 变体共 1 个
+  ✓ ff16c                    全局ai16 覆盖2条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*']
+  ✓ ff32                     全局ai16 覆盖4条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*', '.*SplitFF.*', '.*SplitFF_ff.*']
+  ✓ a4off                    全局ai16 覆盖5条  regex键=['.*', '.*Attention_attn1.*', '.*Attention_attn2.*', '.*AdaLayerNormZero.*', '.*SplitFF.*', '.*SplitFF_ff.*']
+  ★ 变体共 3 个
 
 >>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
-  权重下载 25s  1 分片
+  权重下载 30s  1 分片
 
 >>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
   extra_pos_embed_type = None
@@ -22,178 +24,74 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 >>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
 
->>>>>>>>>>>> A4 量化阶梯导出（block [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]，共 1 个变体） <<<<<<<<<<<<
-
-  ── block 0 ──
-  等价性 1.66e-07 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 1 ──
-  等价性 2.99e-07 OK   输入 std=1.7455  输出 std=292.4155  |max|=6536.6
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
+>>>>>>>>>>>> A4 量化阶梯导出（block [2]，共 3 个变体） <<<<<<<<<<<<
 
   ── block 2 ──
-  等价性 2.50e-07 OK   输入 std=292.4155  输出 std=315.3923  |max|=7820.6
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
+  等价性 2.39e-07 OK   输入 std=0.1080  输出 std=761.0054  |max|=49012.4
+  ★ ff16c                     168.66 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff32                      264.19 MB  I/O=I16/I16/I16/I16->I16
+  ★ a4off                     300.09 MB  I/O=I16/I16/I16/I16->I16
 
-  ── block 3 ──
-  等价性 6.20e-08 OK   输入 std=315.3923  输出 std=316.9449  |max|=7878.0
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 4 ──
-  等价性 6.03e-08 OK   输入 std=316.9449  输出 std=319.4823  |max|=8095.1
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 5 ──
-  等价性 5.87e-08 OK   输入 std=319.4823  输出 std=320.3353  |max|=8319.4
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 6 ──
-  等价性 5.96e-08 OK   输入 std=320.3353  输出 std=318.1144  |max|=8190.8
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 7 ──
-  等价性 1.17e-07 OK   输入 std=318.1144  输出 std=320.8351  |max|=8374.4
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 8 ──
-  等价性 1.15e-07 OK   输入 std=320.8351  输出 std=321.2321  |max|=8456.9
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 9 ──
-  等价性 1.32e-07 OK   输入 std=321.2321  输出 std=313.2712  |max|=7420.6
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 10 ──
-  等价性 2.28e-07 OK   输入 std=313.2712  输出 std=310.9550  |max|=8553.4
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 11 ──
-  等价性 2.75e-07 OK   输入 std=310.9550  输出 std=305.5588  |max|=8888.0
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 12 ──
-  等价性 1.94e-07 OK   输入 std=305.5588  输出 std=316.2694  |max|=10042.9
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 13 ──
-  等价性 1.51e-07 OK   输入 std=316.2694  输出 std=346.3362  |max|=12962.0
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 14 ──
-  等价性 1.68e-07 OK   输入 std=346.3362  输出 std=368.1886  |max|=11658.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 15 ──
-  等价性 1.67e-07 OK   输入 std=368.1886  输出 std=369.9602  |max|=11694.3
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 16 ──
-  等价性 1.93e-07 OK   输入 std=369.9602  输出 std=376.9571  |max|=15180.4
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 17 ──
-  等价性 2.78e-07 OK   输入 std=376.9571  输出 std=343.3903  |max|=12288.8
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 18 ──
-  等价性 2.66e-07 OK   输入 std=343.3903  输出 std=338.0887  |max|=11030.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 19 ──
-  等价性 4.68e-07 OK   输入 std=338.0887  输出 std=311.0566  |max|=7296.2
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 20 ──
-  等价性 5.27e-07 OK   输入 std=311.0566  输出 std=308.0625  |max|=7415.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 21 ──
-  等价性 1.52e-06 OK   输入 std=308.0625  输出 std=300.6812  |max|=6443.8
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 22 ──
-  等价性 3.12e-07 OK   输入 std=300.6812  输出 std=338.8542  |max|=10937.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 23 ──
-  等价性 7.26e-07 OK   输入 std=338.8542  输出 std=339.0230  |max|=9410.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 24 ──
-  等价性 3.64e-07 OK   输入 std=339.0230  输出 std=353.1135  |max|=10716.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 25 ──
-  等价性 5.28e-07 OK   输入 std=353.1135  输出 std=368.1843  |max|=11090.7
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 26 ──
-  等价性 3.56e-07 OK   输入 std=368.1843  输出 std=403.2843  |max|=10982.6
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
-  ── block 27 ──
-  等价性 1.91e-07 OK   输入 std=403.2843  输出 std=1287.8743  |max|=40972.9
-  ★ ff16                      168.66 MB  I/O=I16/I16/I16/I16->I16
-
->>>>>>>>>>>> A4.5 CI 内逐块精度自检（跑 tflite 比对 fp32 参考） <<<<<<<<<<<<
+>>>>>>>>>>>> A4.5 ★ 变体判决：每个变体都喂同一份 fp32 参考输入，与 fp32 参考输出逐元素比对 <<<<<<<<<<<<
   解释器: ai_edge_litert.interpreter
+  参考：in_2 rms=0.1080  out_2 rms=761.0102  max=49012.4453
+  ★★ ff16c   CI口径   0.1444%   RMS口径   0.4206%   最大差 2.7418e+02   输出饱和 0   invoke 10.6s
+     [ff16c] 张量 250 个：占比>0.95 的 98 个，>1.0（真实激活超出标定量程）的 61 个
+       ★超范围 idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
+       ★超范围 idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
+       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
+       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
+       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=87
+       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
+       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
+       ★超范围 idx295   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0003157 量程=10.34 max=10.34 占比=1.000 饱和=1
+       ★超范围 idx296   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001973 量程=6.465 max=6.466 占比=1.000 饱和=1
+       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=72
+       ★超范围 idx298   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.001074 量程=35.2 max=35.2 占比=1.000 饱和=2
+       ★超范围 idx299   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.393e-06 量程=0.275 max=0.275 占比=1.000 饱和=2
+       ·接近   idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
+       ·接近   idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
+       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
+       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=102
+       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=87
+       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=102
+       int16 张量 120 个：占比 中位 1.0000  90分位 1.0000  最大 1.0000
+  ★★ ff32    CI口径   0.0856%   RMS口径   0.1604%   最大差 8.3386e+01   输出饱和 0   invoke 11.1s
+     [ff32] 张量 184 个：占比>0.95 的 50 个，>1.0（真实激活超出标定量程）的 26 个
+       ★超范围 idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
+       ★超范围 idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
+       ★超范围 idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
+       ★超范围 idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
+       ★超范围 idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=16
+       ★超范围 idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
+       ★超范围 idx288   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
+       ★超范围 idx295   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0003157 量程=10.34 max=10.34 占比=1.000 饱和=1
+       ★超范围 idx296   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001973 量程=6.465 max=6.466 占比=1.000 饱和=1
+       ★超范围 idx297   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002477 量程=8.116 max=8.116 占比=1.000 饱和=25
+       ★超范围 idx303   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0002286 量程=7.491 max=7.492 占比=1.000 饱和=25
+       ★超范围 idx304   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=0.0001518 量程=4.975 max=4.975 占比=1.000 饱和=25
+       ·接近   idx0     serving_default_args_0                               int16  scale=9.211e-05 量程=3.018 max=3.018 占比=1.000 饱和=1
+       ·接近   idx259   __main__.main.<locals>.OptBlock;                     int16  scale=0.2061 量程=6753 max=6753 占比=1.000 饱和=1
+       ·接近   idx284   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
+       ·接近   idx285   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=22
+       ·接近   idx286   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=8.694e-05 量程=2.849 max=2.849 占比=1.000 饱和=16
+       ·接近   idx287   __main__.main.<locals>.OptBlock/diffusers.models.att int16  scale=6.508e-05 量程=2.133 max=2.133 占比=1.000 饱和=22
+       int16 张量 56 个：占比 中位 1.0000  90分位 1.0000  最大 1.0000
+  ★★ a4off   CI口径   0.0855%   RMS口径   0.1595%   最大差 8.1886e+01   输出饱和 0   invoke 6.7s
 
-  [1/2] 逐块独立误差（喂 fp32 参考输入，每块单独跑）
-  块     独立误差        参考rms         饱和
-   0      0.168%    1.7455        1
-   1      0.097%    292.42        0
-   2      0.055%    315.39        0
-   3      0.042%    316.95        6
-   4      0.037%    319.48        9
-   5      0.037%    320.34        0
-   6      0.040%    318.12        1
-   7      0.038%    320.84        10
-   8      0.040%    321.24        19
-   9      0.041%    313.28        0
-  10      0.057%    310.98        0
-  11      0.076%    305.62        0
-  12      0.086%    316.37        0
-  13      0.088%    346.53        0
-  14      0.080%    368.46        0
-  15      0.099%    370.27        0
-  16      0.097%    377.29        0
-  17      0.122%    343.76        0
-  18      0.124%    338.61        0
-  19      0.130%    311.78        0
-  20      0.159%    308.86        0
-  21      0.208%    301.59        0
-  22      0.177%    340.17        0
-  23      0.303%    340.29        0
-  24      0.250%    354.03        0
-  25      0.413%    368.32        0
-  26      0.644%    403.36        0
-  27      0.080%    1288          0
-  ★ 逐块：测了 28/28 块，最差 0.644%
+>>>>>>>>>>>> A5 存手机端比对参考：in_2.npy(fp32) + out_2.npy(fp32) → model/（会随 release 上传） <<<<<<<<<<<<
+  ★ model/in_2.npy  32.0 MB  (blk2 的正确输入，fp32)
+  ★ model/out_2.npy 32.0 MB  (blk2 的 fp32 参考输出)
+  ★ out/chain_slices.npz + out/chain_traj.txt 已更新
 
-  [2/2] 28 块串联（真实推理路径：块间走量化后的 int16）
-  ★★ 串联跑满 28 块，最终逐元素误差 1.270%   (末块参考 rms 1288)
-  ★★ chain_traj.txt 56 行（QNT 28 + REF 28）+ chain_slices.npz 16 键
-
-
->>>>>>>>>>>> A5 保存参考（手机端逐元素比对用） <<<<<<<<<<<<
-  ★ ref_blk0.npz 66.0 MB  (hidden 输入 + out = block0 浮点输出)
-  ★ ref_blk1.npz 66.0 MB  (输入 = block0 浮点输出, out = block1 浮点输出)
-  ★ ref_chain.npz 66.0 MB  (初始输入 + 第 27 块浮点输出 = 28 块串联参考)
+>>>>>>>>>>>> A5.5 汇总（手机端对照用） <<<<<<<<<<<<
+  ★ out/variant_summary.txt 已写
 
 >>>>>>>>>>>> A5.5 存手机出图需要的小文件（enc/ets/temb） <<<<<<<<<<<<
   ★ meta.npz 2.03 MB  (enc/ets/temb，手机端出图直接读)
 
->>>>>>>>>>>> A6 用真实 prompt 算文本 embedding（失败不影响导出） <<<<<<<<<<<<
-  读 model_index.json 失败: 404 Client Error. (Request ID: Root=1-6acd6ed6-674b192260bb9845669dda24;bc156759-5390-422c-a306-284d847e2531)
-
-Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0-Diffuser
-  prompt = a highly detailed photograph of a red panda sitting on a mossy rock, morning light, sharp focus
-  文本编码失败（不影响导出）: RemoteEntryNotFoundError 404 Client Error. (Request ID: Root=1-6acd6ed7-6c3317427060a20e3a3d0caa;6c7d443e-9b53-40df-a643-6b277ab1a731)
-
-Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0-Diffusers/resolve/073c3a9db359c31ad0e8aa268d15775473c2176c/model_index.json.
+>>>>>>>>>>>> A6 文本编码：本轮跳过（只为 blk2 定位，不浪费时间） <<<<<<<<<<<<
 
 >>>>>>>>>>>> 汇总 <<<<<<<<<<<<
-  块 28 个 (0..27)   chunk=512 FF拆16  变体 ['ff16']
-  导出成功 28 个模型
-  git push rc=0
+  块 1 个 (2..2)   chunk=512 FF拆16  变体 ['ff16c', 'ff32', 'a4off']
+  导出成功 3 个模型
