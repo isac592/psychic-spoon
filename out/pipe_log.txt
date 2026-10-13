@@ -62,3 +62,4 @@ huggingface_hub.errors.RemoteEntryNotFoundError: 404 Client Error. (Request ID: 
 
 Entry Not Found for url: https://huggingface.co/circlestone-labs/Anima-Base-v1.0-Diffusers/resolve/073c3a9db359c31ad0e8aa268d15775473c2176c/model_index.json.
 
+  git push rc=0
