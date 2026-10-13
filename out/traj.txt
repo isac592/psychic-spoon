@@ -1,0 +1,68 @@
+blk  0 step0 rms=0.691143 max=30.6858
+blk  1 step0 rms=186.757 max=4195.03
+blk  2 step0 rms=189.19 max=4213.25
+blk  3 step0 rms=189.789 max=4207.83
+blk  4 step0 rms=190.224 max=4206.41
+blk  5 step0 rms=192.914 max=4204.3
+blk  6 step0 rms=196.121 max=4199.12
+blk  7 step0 rms=199.556 max=4172.92
+blk  8 step0 rms=202.759 max=5286.01
+blk  9 step0 rms=226.021 max=9295.99
+blk 10 step0 rms=231.405 max=10493.6
+blk 11 step0 rms=237.839 max=12839.3
+blk 12 step0 rms=408.881 max=253288
+blk 13 step0 rms=412.459 max=256558
+blk 14 step0 rms=424.203 max=257697
+blk 15 step0 rms=427.954 max=257896
+blk 16 step0 rms=432.825 max=257950
+blk 17 step0 rms=434.306 max=254232
+blk 18 step0 rms=425.618 max=244857
+blk 19 step0 rms=411.937 max=220385
+blk 20 step0 rms=379.555 max=195603
+blk 21 step0 rms=348.523 max=75332.4
+blk 22 step0 rms=338.05 max=18544.8
+blk 23 step0 rms=343.021 max=15041.7
+blk 24 step0 rms=353.439 max=15178.6
+blk 25 step0 rms=373.568 max=13996.2
+blk 26 step0 rms=343.287 max=10378.5
+blk 27 step0 rms=1433.9 max=39903.8
+P1 STEP 0 sigma 1 -> 0.9 v_rms=1.01224 x_rms=0.996843
+blk  0 step1 rms=0.846035 max=28.5814
+blk  1 step1 rms=196.957 max=4254.28
+blk  2 step1 rms=198.55 max=4278.85
+blk  3 step1 rms=198.729 max=4281.12
+blk  4 step1 rms=199.399 max=4289.03
+blk  5 step1 rms=198.919 max=4288.94
+blk  6 step1 rms=199.213 max=4291.86
+blk  7 step1 rms=199.945 max=4283.01
+blk  8 step1 rms=200.692 max=4288.9
+blk  9 step1 rms=204.989 max=6384.68
+blk 10 step1 rms=210.329 max=8573.05
+blk 11 step1 rms=215.75 max=10487.4
+blk 12 step1 rms=387.302 max=257209
+blk 13 step1 rms=392.879 max=260627
+blk 14 step1 rms=398.306 max=261745
+blk 15 step1 rms=403.117 max=261865
+blk 16 step1 rms=401.567 max=261871
+blk 17 step1 rms=406.675 max=257878
+blk 18 step1 rms=396.059 max=248092
+blk 19 step1 rms=373.821 max=223644
+blk 20 step1 rms=342.386 max=198204
+blk 21 step1 rms=275.767 max=78022.5
+blk 22 step1 rms=315.066 max=14610.5
+blk 23 step1 rms=259.645 max=10170.2
+blk 24 step1 rms=274.118 max=11995.7
+blk 25 step1 rms=305.752 max=11909.8
+blk 26 step1 rms=348.421 max=11232.5
+blk 27 step1 rms=1379.25 max=39632
+P1 STEP 1 sigma 0.9 -> 0.75 v_rms=1.08801 x_rms=1.01701
+P1 STEP 2 sigma 0.75 -> 0.5 v_rms=1.24992 x_rms=1.11789
+P1 STEP 3 sigma 0.5 -> 0 v_rms=1.71576 x_rms=1.6432
+P2 STEP 0 sigma 1 -> 0.9 v_rms=1.01643 x_rms=0.99687
+P2 STEP 1 sigma 0.9 -> 0.75 v_rms=1.0885 x_rms=1.01707
+P2 STEP 2 sigma 0.75 -> 0.5 v_rms=1.25601 x_rms=1.11844
+P2 STEP 3 sigma 0.5 -> 0 v_rms=1.69781 x_rms=1.63684
+P3 STEP 0 sigma 1 -> 0.9 v_rms=1.02262 x_rms=0.996884
+P3 STEP 1 sigma 0.9 -> 0.75 v_rms=1.09359 x_rms=1.01724
+P3 STEP 2 sigma 0.75 -> 0.5 v_rms=1.25335 x_rms=1.11867
+P3 STEP 3 sigma 0.5 -> 0 v_rms=1.70137 x_rms=1.63787

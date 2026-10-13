@@ -1,7 +1,7 @@
 torch 2.13.0+cu130 | diffusers 0.41.0 | STEPS 4 CFG 1.0 SHIFT 3.0
 
 >>>>>>>>>>>> A1 建 1 层骨架 + 下载权重（按块懒读，28 块全 fp32 装不下内存） <<<<<<<<<<<<
-  shared 4 key  分片 1
+  shared 7 key  分片 1
 
 >>>>>>>>>>>> A2 文本编码器 + 3 份提示词（关 CFG，只用 cond） <<<<<<<<<<<<
   ✓ Qwen2Tokenizer / Qwen3Model / AnimaTextConditioner
@@ -12,18 +12,37 @@ torch 2.13.0+cu130 | diffusers 0.41.0 | STEPS 4 CFG 1.0 SHIFT 3.0
       cond (1, 512, 1024) std=0.0617
   p3  a portrait of an old man with a white beard, studio lighting, photorea
       cond (1, 512, 1024) std=0.0535
+  patch_size=(1,2,2) out_channels=16  grid=64x64
 
 >>>>>>>>>>>> A3 3 个提示词 × 4 步 fp32（CFG 关，每张 4 次前向） <<<<<<<<<<<<
   sigma 序列 1.0000, 0.9000, 0.7500, 0.5000, 0.0000
   ── p1 初始 latent rms=0.9979
+     p1 步 1/4 sigma 1.000→0.900  v_rms=1.0122  x_rms=0.9968  累计 107s
+     p1 步 2/4 sigma 0.900→0.750  v_rms=1.0880  x_rms=1.0170  累计 214s
+     p1 步 3/4 sigma 0.750→0.500  v_rms=1.2499  x_rms=1.1179  累计 320s
+     p1 步 4/4 sigma 0.500→0.000  v_rms=1.7158  x_rms=1.6432  累计 427s
+     p1 完事 rms=1.6432 max=8.0078 空间相关=-0.0064
+  ── p2 初始 latent rms=0.9979
+     p2 步 1/4 sigma 1.000→0.900  v_rms=1.0164  x_rms=0.9969  累计 533s
+     p2 步 2/4 sigma 0.900→0.750  v_rms=1.0885  x_rms=1.0171  累计 640s
+     p2 步 3/4 sigma 0.750→0.500  v_rms=1.2560  x_rms=1.1184  累计 747s
+     p2 步 4/4 sigma 0.500→0.000  v_rms=1.6978  x_rms=1.6368  累计 855s
+     p2 完事 rms=1.6368 max=7.9739 空间相关=-0.0041
+  ── p3 初始 latent rms=0.9979
+     p3 步 1/4 sigma 1.000→0.900  v_rms=1.0226  x_rms=0.9969  累计 962s
+     p3 步 2/4 sigma 0.900→0.750  v_rms=1.0936  x_rms=1.0172  累计 1070s
+     p3 步 3/4 sigma 0.750→0.500  v_rms=1.2534  x_rms=1.1187  累计 1178s
+     p3 步 4/4 sigma 0.500→0.000  v_rms=1.7014  x_rms=1.6379  累计 1286s
+     p3 完事 rms=1.6379 max=8.0133 空间相关=-0.0048
 
-!!!!!! 顶层异常: RuntimeError The size of tensor a (128) must match the size of tensor b (2048) at non-singleton dimension 4
-Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 189, in <module>
-    main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 160, in main
-    x=x+(s1-s0)*h
-      ~^~~~~~~~~~
-RuntimeError: The size of tensor a (128) must match the size of tensor b (2048) at non-singleton dimension 4
+>>>>>>>>>>>> A3.5 自检（无 VAE，纯统计） <<<<<<<<<<<<
+  p1 rms=1.6432 max=8.008 非有限=0 空间相关=-0.0064  ✗
+  p2 rms=1.6368 max=7.974 非有限=0 空间相关=-0.0041  ✗
+  p3 rms=1.6379 max=8.013 非有限=0 空间相关=-0.0048  ✗
+  p1 vs p2 差异 rms=0.0764（相对 4.6%）✗ 几乎一样，文本条件没生效
+  p1 vs p3 差异 rms=0.0667（相对 4.1%）✗ 几乎一样，文本条件没生效
+  p2 vs p3 差异 rms=0.0447（相对 2.7%）✗ 几乎一样，文本条件没生效
+  ★ 自检结论：未通过，看上面
 
-  git push rc=0
+>>>>>>>>>>>> A5 汇总 <<<<<<<<<<<<
+  总耗时 21.4 分钟
