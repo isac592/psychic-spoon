@@ -1,0 +1,26 @@
+torch 2.13.0+cu130 | diffusers 0.41.0 | STEPS 4 CFG 4.0 SHIFT 3.0
+
+>>>>>>>>>>>> A1 建 1 层骨架 + 下载权重（按块懒读，28 块全 fp32 装不下内存） <<<<<<<<<<<<
+  shared 4 key  分片 1
+
+>>>>>>>>>>>> A2 文本编码器 + 3 份提示词（关 CFG，只用 cond） <<<<<<<<<<<<
+  ✓ Qwen2Tokenizer / Qwen3Model / AnimaTextConditioner
+
+!!!!!! 顶层异常: TypeError AnimaTextConditioner.forward() missing 1 required positional argument: 'target_input_ids'
+Traceback (most recent call last):
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 180, in <module>
+    main()
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 111, in main
+    c=cond_of(p); CONDS.append(c)
+      ^^^^^^^^^^
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 104, in cond_of
+    with torch.no_grad(): o=tc(h)
+                            ^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AnimaTextConditioner.forward() missing 1 required positional argument: 'target_input_ids'
+
