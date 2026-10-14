@@ -1,0 +1,31 @@
+torch 2.13.0+cu130 | diffusers 0.41.0
+
+>>>>>>>>>>>> A1 载入四个裸组件（这几行之前都单独跑通过） <<<<<<<<<<<<
+  ✓ Qwen2Tokenizer
+  ✓ Qwen3Model
+  ✓ T5Tokenizer vocab=32100
+  ✓ AnimaTextConditioner
+  ★ conditioner.forward 签名 = (source_hidden_states: torch.Tensor, target_input_ids: torch.Tensor, target_attention_mask: torch.Tensor | None = None, source_attention_mask: torch.Tensor | None = None) -> torch.Tensor
+
+>>>>>>>>>>>> A2 六种调用方式逐个试（总有一个对） <<<<<<<<<<<<
+  qwen ids (1, 512) mask (1, 512)  hidden (1, 512, 1024)   t5 ids (1, 512) mask (1, 512)
+  tc(h,t5id)                     → (1, 512, 1024)
+  tc(h,target_input_ids=t5id)    → (1, 512, 1024)
+  tc(h,t5id,qmask,t5mask)        → (1, 512, 1024)
+  tc(h,t5id,t5mask)              → (1, 512, 1024)
+  tc(h)                          ✗ TypeError AnimaTextConditioner.forward() missing 1 required positional argument: 'target_input_ids'
+  ★ 采用 tc(h,t5id)
+
+>>>>>>>>>>>> A3 出 3 组 cond/uncond + 1 组负向，并保存 <<<<<<<<<<<<
+  uncond (1, 512, 1024) std=0.05600 min=-0.866 max=0.812
+  p1 a highly detailed photograph of a red panda si std=0.05600
+  p2 an oil painting of a sailing ship in a storm,  std=0.05600
+  p3 a portrait of an old man with a white beard, s std=0.05600
+
+>>>>>>>>>>>> A4 自检 <<<<<<<<<<<<
+  cond   shape=(1, 512, 1024) std=0.05600
+  uncond shape=(1, 512, 1024) std=0.05600
+  cond vs uncond 平均绝对差 = 0.00000  ✗ 几乎一样
+  （旧 text.npz 的 cond std 是 0.0651 —— 对比上面这个数，差一个数量级就说明旧条件是坏的）
+  ★ 自检结论：未通过
+  ★ 手机端替换：node dl2.js <anima目录> text_full.npz  → 改名 text.npz
