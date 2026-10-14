@@ -4,19 +4,39 @@ torch 2.13.0+cu130 | diffusers 0.41.0 | STEPS 4
   ✓ 用 AnimaModularPipeline 载入成功
   pipeline 类 = AnimaModularPipeline（来自 AnimaModularPipeline）
   组件 = ['guider', 'image_processor', 'scheduler', 't5_tokenizer', 'text_conditioner', 'text_encoder', 'tokenizer', 'transformer', 'vae']
+  ★ __call__ 签名: (state: diffusers.modular_pipelines.modular_pipeline.PipelineState = None, output: str | list[str] = None, **kwargs)
+  ★ __init__ 签名: (blocks: diffusers.modular_pipelines.modular_pipeline.ModularPipelineBlocks | None = None, pretrained_model_name_or_path: str | os.PathLike | None = None, components_manager: diffusers.modular_pipelines.components_manager.ComponentsManager | None = None, collection: str | None = None, workflow: str | None = None, modular_config_dict: dict[str, typing.Any] | None = None, config_dict: dict[str, typing.Any] | None = None, **kwargs)
 
 >>>>>>>>>>>> A2 dump 约定（手机端要照抄的都在这里） <<<<<<<<<<<<
   ★ vae_scale_factor = 8
 
 >>>>>>>>>>>> A3 挂钩子：抓第 0 步 transformer 的输入 + 每步 latent <<<<<<<<<<<<
+  transformer=空  scheduler=空
+  ✗ 组件拿不到，跳过钩子（只出图 + dump 约定）
 
-!!!!!! 顶层异常: AttributeError 'NoneType' object has no attribute 'register_forward_pre_hook'
+>>>>>>>>>>>> A4 3 份提示词各出一张（4 步，guidance_scale=1.0 关 CFG） <<<<<<<<<<<<
+
+!!!!!! 顶层异常: AttributeError 'NoneType' object has no attribute 'dtype'
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 141, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 162, in <module>
     main()
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 85, in main
-    h=pipe.transformer.register_forward_pre_hook(pre_hook, with_kwargs=True)
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'NoneType' object has no attribute 'register_forward_pre_hook'
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 119, in main
+    res=pipe(**kw)
+        ^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/modular_pipelines/modular_pipeline.py", line 3013, in __call__
+    _, state = self._blocks(self, state)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/modular_pipelines/modular_pipeline.py", line 1200, in __call__
+    pipeline, state = block(pipeline, state)
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/diffusers/modular_pipelines/anima/encoders.py", line 251, in __call__
+    dtype=components.text_encoder.dtype,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'dtype'
 
-  git push rc=0
