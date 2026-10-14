@@ -1,0 +1,81 @@
+
+>>>>>>>>>>>> 仓库 circlestone-labs/Anima-Base-v1.0-Diffusers <<<<<<<<<<<<
+  私有=False  下载量=14241  最后修改=2026-05-22 21:06:00+00:00
+  文件 18 个：
+         0.0 MB  .gitattributes
+         0.0 MB  LICENSE.md
+         0.0 MB  README.md
+         0.0 MB  modular_model_index.json
+         0.0 MB  scheduler/scheduler_config.json
+         2.3 MB  t5_tokenizer/tokenizer.json
+         0.0 MB  t5_tokenizer/tokenizer_config.json
+         0.0 MB  text_conditioner/config.json
+       256.9 MB  text_conditioner/diffusion_pytorch_model.safetensors
+         0.0 MB  text_encoder/config.json
+      1136.9 MB  text_encoder/model.safetensors
+         0.0 MB  tokenizer/chat_template.jinja
+        10.9 MB  tokenizer/tokenizer.json
+         0.0 MB  tokenizer/tokenizer_config.json
+         0.0 MB  transformer/config.json
+      3731.6 MB  transformer/diffusion_pytorch_model.safetensors
+         0.0 MB  vae/config.json
+       242.0 MB  vae/diffusion_pytorch_model.safetensors
+  合计 5380.7 MB
+  ★ modular_model_index.json (2414 字节): {   "_blocks_class_name": "AnimaAutoBlocks",   "_class_name": "AnimaModularPipeline",   "_diffusers_version": "0.39.0.dev0",   "scheduler": [     "diffusers",     "FlowMatchEulerDiscreteScheduler",     {       "pretrained_model_name_or_path": "circlestone-labs/Anima-Base-v1.0-Diffusers",       "revision": null,       "subfolder": "scheduler",       "type_hint": [         "diffusers",         "FlowMatchEulerDiscreteScheduler"       ],       "variant": null     }   ],   "t5_tokenizer": [     "transformers",     "T5Tokenizer",     {       "pretrained_model_name_or_path": "circlestone-labs/Anima-Base-v1.0-Diffusers",       "revision": null,       "subfolder": "t5_tokenizer",       "type_hint": [         "transformers",         "T5Tokenizer"       ],       "variant": null     }   ],   "text_conditioner": [     "diffusers",     "AnimaTextConditioner",     {       "pretrained_model_name_or_path": "circlestone-labs/Anima-Base-v1.0-Diffusers",       "revision": null,       "subfolder": "text_conditioner",       "type_hint": [         "diffusers",         "AnimaTextConditioner"       ],       "variant": null     }   ],   "text_encoder": [     "transformers",     "Qwen3Model",     {       "pretrained_model_name_or_path": "circlestone-labs/Anima-Base-v1.0-Diffusers",       "revision": null,       "subfolder": "text_encoder",       "type_hint": [         "transformers",         "Qwen3Model"       ],       "variant": null     }   ],   "tokenizer": [     "transformers",     "Qwen2Tokenizer"
+  model_index.json 不存在/取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-6d5e133140632b48402d7df2;42fb6215-e09e-43fa-841e-f1c2fcd052a7)
+
+Entry Not
+  ★ transformer/config.json: {   "_class_name": "CosmosTransformer3DModel",   "_diffusers_version": "0.39.0.dev0",   "adaln_lora_dim": 256,   "attention_head_dim": 128,   "concat_padding_mask": true,   "controlnet_block_every_n": null,   "crossattn_proj_in_channels": 1024,   "encoder_hidden_states_channels": 1024,   "extra_pos_embed_type": null,   "img_context_dim_in": null,   "img_context_dim_out": 2048,   "img_context_num_tokens": 256,   "in_channels": 16,   "max_size": [     128,     240,     240   ],   "mlp_ratio": 4.0,   "num_attention_heads": 16,   "num_layers": 28,   "out_channels": 16,   "patch_size": [     1,     2,     2   ],   "rope_scale": [     1.0,     4.0,     4.0   ],   "text_embed_dim": 1024,   "use_crossattn_projection": false } 
+
+>>>>>>>>>>>> 仓库 circlestone-labs/Anima <<<<<<<<<<<<
+  私有=False  下载量=1307441  最后修改=2026-08-24 23:52:12+00:00
+  文件 17 个：
+         0.0 MB  .gitattributes
+         0.0 MB  LICENSE.md
+         0.0 MB  README.md
+         0.0 MB  anima_comparison.json
+         1.1 MB  example.png
+         1.9 MB  montage.jpg
+      3988.5 MB  split_files/diffusion_models/anima-aesthetic-v1.0.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-aesthetic-v1.0b.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-aesthetic-v1.1.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-base-v1.0.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-preview.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-preview2.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-preview3-base.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-turbo-v1.0.safetensors
+      3988.5 MB  split_files/diffusion_models/anima-turbo-v1.1.safetensors
+      1136.9 MB  split_files/text_encoders/qwen_3_06b_base.safetensors
+       242.0 MB  split_files/vae/qwen_image_vae.safetensors
+  合计 37278.3 MB
+  modular_model_index.json 不存在/取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-193d3bb937dbfe21653b3764;1797fa54-8b0b-4485-9399-60a52be79ee3)
+
+Entry Not
+  model_index.json 不存在/取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-067c12a53039adf042e1303c;e71a50e3-1524-47a3-ba56-c14b27b5e36e)
+
+Entry Not
+  transformer/config.json 取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-3f8d2978535dff12137bb8ba;a53c823b-6068-45e5-b96d-79d595d76731)
+
+Entry Not
+
+>>>>>>>>>>>> 仓库 Abiray/Anima-base-v1.0-GGUF <<<<<<<<<<<<
+  私有=False  下载量=4016  最后修改=2026-05-14 19:32:34+00:00
+  文件 8 个：
+         0.0 MB  .gitattributes
+         0.0 MB  README.md
+       974.8 MB  anima-base-v1.0-Q3_K_M.gguf
+      1320.3 MB  anima-base-v1.0-Q4_K_M.gguf
+      1210.3 MB  anima-base-v1.0-Q4_K_S.gguf
+      1483.6 MB  anima-base-v1.0-Q5_K_M.gguf
+      1657.1 MB  anima-base-v1.0-Q6_K.gguf
+      2135.7 MB  anima-base-v1.0-Q8_0.gguf
+  合计 8781.7 MB
+  modular_model_index.json 不存在/取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-273a88e33563e87b0315f77e;0d9da6b4-05aa-41d5-be2c-e5b23f532379)
+
+Entry Not
+  model_index.json 不存在/取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-175878b62cc7de6e26acd1ad;c5512f1c-a362-4221-bc82-fa2613fcbe90)
+
+Entry Not
+  transformer/config.json 取不到: 404 Client Error. (Request ID: Root=1-6acefdf7-79e5473d5091f8937eaad231;a7239640-e42a-4ce3-9d93-c1c19b802ee2)
+
+Entry Not
