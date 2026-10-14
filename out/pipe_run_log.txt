@@ -3,6 +3,10 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 >>>>>>>>>>>> A1 载入 AnimaModularPipeline <<<<<<<<<<<<
   类 = AnimaModularPipeline
 
+>>>>>>>>>>>> A1.5 ★ 显式装配组件（模块化 pipeline 惰性加载，不调这一步组件全是 None） <<<<<<<<<<<<
+  ✓ load_components(torch_dtype=float32)
+  装配后组件类型 = {'text_encoder': 'Qwen3Model', 'tokenizer': 'Qwen2Tokenizer', 't5_tokenizer': 'T5Tokenizer', 'guider': 'ClassifierFreeGuidance', 'vae': 'AutoencoderKLQwenImage', 'image_processor': 'VaeImageProcessor', 'text_conditioner': 'AnimaTextConditioner', 'transformer': 'NoneType', 'scheduler': 'FlowMatchEulerDiscreteScheduler'}
+
 >>>>>>>>>>>> A2 3 份提示词按正确流程出图（4 步，guidance_scale=4.0） <<<<<<<<<<<<
   p1 调用失败（full）: 'NoneType' object has no attribute 'dtype'
   p1 调用失败（no_neg）: 'NoneType' object has no attribute 'dtype'
@@ -10,7 +14,7 @@ torch 2.13.0+cu130 | diffusers 0.41.0
 
 !!!!!! 顶层异常: RuntimeError 三种调用都失败
 Traceback (most recent call last):
-  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 73, in <module>
+  File "/home/runner/work/psychic-spoon/psychic-spoon/exp.py", line 85, in <module>
     if out is None: raise RuntimeError("三种调用都失败")
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 RuntimeError: 三种调用都失败
