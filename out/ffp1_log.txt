@@ -1,0 +1,65 @@
+torch 2.13.0+cu130 | diffusers 0.41.0
+配置: 块[0, 1, 2] chunk=512 FF拆1   变体 3 个
+
+>>>>>>>>>>>> A0 量化器能力全 dump <<<<<<<<<<<<
+  AlgorithmName: 不存在
+  ★ TFLOperationName (52 项): ['ALL_SUPPORTED', 'INPUT', 'OUTPUT', 'FULLY_CONNECTED', 'BATCH_MATMUL', 'DEPTHWISE_CONV_2D', 'CONV_2D', 'CONV_2D_TRANSPOSE', 'AVERAGE_POOL_2D', 'RESHAPE', 'CUSTOM_OP', 'EMBEDDING_LOOKUP', 'SOFTMAX', 'TANH', 'TRANSPOSE', 'GELU', 'ADD', 'SUB', 'MUL', 'MEAN', 'RSQRT', 'CONCATENATION', 'STRIDED_SLICE', 'SPLIT', 'LOGISTIC', 'SLICE', 'SUM', 'SELECT', 'SELECT_V2', 'DYNAMIC_UPDATE_SLICE', 'STABLEHLO_COMPOSITE', 'PAD', 'SQUARED_DIFFERENCE', 'MAX_POOL_2D', 'RESIZE_BILINEAR', 'RESIZE_NEAREST_NEIGHBOR', 'GATHER_ND', 'PACK', 'UNPACK', 'DIV', 'BROADCAST_TO', 'SQRT', 'GATHER', 'HARD_SWISH', 'MAXIMUM', 'PADV2', 'REDUCE_MIN', 'EQUAL', 'NOT_EQUAL', 'MIRROR_PAD', 'SPACE_TO_DEPTH', 'RELU']
+  ★ QuantGranularity (6 项): ['TENSORWISE', 'CHANNELWISE', 'BLOCKWISE_32', 'BLOCKWISE_64', 'BLOCKWISE_128', 'BLOCKWISE_256']
+  ★ ComputePrecision (2 项): ['INTEGER', 'FLOAT']
+  ★ TensorDataType (2 项): ['INT', 'FLOAT']
+  ★ aeq_recipe 现成配方: ['AlgorithmName', 'QuantGranularity', 'TFLOperationName', 'dynamic_legacy_wi8_afp32', 'dynamic_wi2b32_afp32', 'dynamic_wi2b64_afp32', 'dynamic_wi2c_afp32', 'dynamic_wi2c_hr_afp32', 'dynamic_wi4_afp32', 'dynamic_wi4b32_afp32', 'dynamic_wi4b64_afp32', 'dynamic_wi4c_afp32', 'dynamic_wi4c_hr_afp32', 'dynamic_wi8_afp32', 'dynamic_wi8b32_afp32', 'dynamic_wi8b64_afp32', 'dynamic_wi8c_afp32', 'dynamic_wi8c_hr_afp32', 'gemma4_mixed48', 'gemma4_mixed48_b32', 'gemma4_mixed48_b64', 'gemma4_mixed48_hr', 'static_wi8_ai16', 'static_wi8_ai8', 'weight_only_wi4_afp32', 'weight_only_wi8_afp32']
+  ★ RecipeManager 方法: ['add_dynamic_config', 'add_quantization_config', 'add_static_config', 'add_weight_only_config', 'get_quantization_configs', 'get_quantization_recipe', 'load_quantization_recipe', 'need_calibration']
+  ★ AlgorithmName 成员: ['DECOMPOSED_HADAMARD_ROTATION', 'DEQUANTIZED_WEIGHT_RECOVERY', 'FLOAT_CASTING', 'GPTQ', 'HADAMARD_ROTATION', 'MIN_MAX_UNIFORM_QUANT', 'MSE', 'NO_QUANTIZE', 'OCTAV']
+  ✓ ff16c                    全局ai16 覆盖2条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*']
+  ✓ ff32                     全局ai16 覆盖4条  regex键=['.*', '.*Attention_attn1.*', '.*AdaLayerNormZero.*', '.*SplitFF.*', '.*SplitFF_ff.*']
+  ✓ a4off                    全局ai16 覆盖5条  regex键=['.*', '.*Attention_attn1.*', '.*Attention_attn2.*', '.*AdaLayerNormZero.*', '.*SplitFF.*', '.*SplitFF_ff.*']
+  ★ 变体共 3 个
+
+>>>>>>>>>>>> A1 建骨架 + 下载 transformer 权重 <<<<<<<<<<<<
+  权重下载 27s  1 分片
+
+>>>>>>>>>>>> A2 造输入（隐变量标准正态 std=1，与真实管道一致） <<<<<<<<<<<<
+  extra_pos_embed_type = None
+  hidden (1, 4096, 2048) std=0.1080   enc (1, 512, 1024)   ets (1, 2048)   temb (1, 6144)
+
+>>>>>>>>>>>> A3 优化件（折叠 RoPE + FF 切分） <<<<<<<<<<<<
+
+>>>>>>>>>>>> A4 量化阶梯导出（block [0, 1, 2]，共 3 个变体） <<<<<<<<<<<<
+
+  ── block 0 ──
+  等价性 0.00e+00 OK   输入 std=0.1080  输出 std=1.7455  |max|=69.1
+  （block 0 只算 fp32 参考链，不导出）
+
+  ── block 1 ──
+  等价性 0.00e+00 OK   输入 std=1.7455  输出 std=292.4155  |max|=6536.6
+  （block 1 只算 fp32 参考链，不导出）
+
+  ── block 2 ──
+  等价性 0.00e+00 OK   输入 std=292.4155  输出 std=315.3923  |max|=7820.6
+  ★ ff16c                     168.29 MB  I/O=I16/I16/I16/I16->I16
+  ★ ff32                      264.17 MB  I/O=I16/I16/I16/I16->I16
+  ★ a4off                     300.07 MB  I/O=I16/I16/I16/I16->I16
+
+>>>>>>>>>>>> A4.5 ★ 变体判决：每个变体都喂同一份 fp32 参考输入，与 fp32 参考输出逐元素比对 <<<<<<<<<<<<
+  解释器: ai_edge_litert.interpreter
+  参考：in_2 rms=292.4159  out_2 rms=315.3925  max=7820.5938
+  ✗ 变体 ff16c 模型缺失
+  ✗ 变体 ff32 模型缺失
+  ✗ 变体 a4off 模型缺失
+
+>>>>>>>>>>>> A5 存手机端比对参考：in_2.npy(fp32) + out_2.npy(fp32) → model/（会随 release 上传） <<<<<<<<<<<<
+  ★ model/in_2.npy  32.0 MB  (blk2 的正确输入，fp32)
+  ★ model/out_2.npy 32.0 MB  (blk2 的 fp32 参考输出)
+  ★ out/chain_slices.npz + out/chain_traj.txt 已更新
+
+>>>>>>>>>>>> A5.5 汇总（手机端对照用） <<<<<<<<<<<<
+  ★ out/variant_summary.txt 已写
+
+>>>>>>>>>>>> A5.5 存手机出图需要的小文件（enc/ets/temb） <<<<<<<<<<<<
+  ★ meta.npz 2.03 MB  (enc/ets/temb，手机端出图直接读)
+
+>>>>>>>>>>>> A6 文本编码：本轮跳过（只为 blk2 定位，不浪费时间） <<<<<<<<<<<<
+
+>>>>>>>>>>>> 汇总 <<<<<<<<<<<<
+  块 3 个 (2..2)   chunk=512 FF拆1  变体 ['ff16c', 'ff32', 'a4off']
+  导出成功 3 个模型
