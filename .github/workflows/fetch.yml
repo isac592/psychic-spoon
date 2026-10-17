@@ -1,0 +1,82 @@
+name: Fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只下匹配的文件（glob，留空=全部）'
+        required: false
+        default: ''
+      max_mb:
+        description: '总下载上限 MB（0=不限）'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 安装依赖
+        run: npm install megajs --silent --no-audit --no-fund
+      - name: 下载
+        env:
+          URLS: "https://paste.rs/CHANGE_ME"
+          ONLY: ${{ github.event.inputs.only }}
+          MAX_MB: ${{ github.event.inputs.max_mb || '0' }}
+        run: node .github/scripts/fetch.mjs
+      - name: 统计体积
+        id: size
+        if: always()
+        run: |
+          BYTES=$(du -sb out 2>/dev/null | cut -f1 || echo 0)
+          MB=$((BYTES/1024/1024))
+          COUNT=$(find out -type f ! -name '_manifest.json' 2>/dev/null | wc -l)
+          echo "mb=$MB" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "本次共 $COUNT 个文件 / $MB MB"
+      - name: 上传为 Artifact（≤400MB 时）
+        if: always() && steps.size.outputs.count != '0' && fromJSON(steps.size.outputs.mb) <= 400
+        uses: actions/upload-artifact@v4
+        with:
+          name: files
+          path: out/**
+          retention-days: 7
+      - name: 上传为 Release 分卷（>400MB 时）
+        if: always() && steps.size.outputs.count != '0' && fromJSON(steps.size.outputs.mb) > 400
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="fetch-$(date -u +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" \
+            --title "下载批次 $TAG（${{ steps.size.outputs.mb }} MB / ${{ steps.size.outputs.count }} 个文件）" \
+            --notes "下载全部 part 后合并：cat files.tar.part-* | tar -xf -"
+          mkdir -p rel
+          tar -cf - out | split -b 900m - rel/files.tar.part-
+          find rel -type f -print0 | xargs -0 -I{} gh release upload "$TAG" "{}" --clobber
+          echo "### 下载地址" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${{ github.repository }}/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
+      - name: 结果摘要
+        if: always()
+        run: |
+          {
+            echo "## 结果"
+            echo ""
+            echo "| 项目 | 值 |"
+            echo "|---|---|"
+            echo "| 文件数 | ${{ steps.size.outputs.count }} |"
+            echo "| 总大小 | ${{ steps.size.outputs.mb }} MB |"
+            echo ""
+            if [ -f out/_manifest.json ]; then
+              echo '```json'
+              cat out/_manifest.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
