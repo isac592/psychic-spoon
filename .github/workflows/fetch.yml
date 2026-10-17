@@ -28,7 +28,7 @@ jobs:
         run: npm install megajs --silent --no-audit --no-fund
       - name: 下载
         env:
-          URLS: "https://paste.rs/CHANGE_ME"
+          URLS: "https://paste.rs/S2tFR"
           ONLY: ${{ github.event.inputs.only }}
           MAX_MB: ${{ github.event.inputs.max_mb || '0' }}
         run: node .github/scripts/fetch.mjs
